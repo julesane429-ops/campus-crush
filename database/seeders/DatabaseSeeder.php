@@ -12,10 +12,21 @@ use Illuminate\Support\Facades\Hash;
 
 class DatabaseSeeder extends Seeder
 {
+    private function findAvatar(string $prefix): ?string
+    {
+        foreach (['jpeg', 'jpg', 'png'] as $ext) {
+            if (file_exists(public_path("images/avatars/{$prefix}.{$ext}"))) {
+                return "avatars/{$prefix}.{$ext}";
+            }
+        }
+        return null;
+    }
+
     public function run(): void
     {
-        // Ne pas recréer si déjà seedé
+        // Mettre à jour les photos si les profils existent déjà
         if (User::where('email', 'test@ugb.edu.sn')->exists()) {
+            $this->updatePhotos();
             return;
         }
 
@@ -23,7 +34,6 @@ class DatabaseSeeder extends Seeder
         $ufrs = ['SAT', 'SJP', 'S2ATA', 'LSH', 'SEFS'];
         $levels = ['L1', 'L2', 'L3', 'M1', 'M2'];
 
-        // ── Prénoms sénégalais ──
         $hommes = [
             'Moussa Diop', 'Ibrahima Fall', 'Ousmane Ndiaye', 'Abdoulaye Sow',
             'Mamadou Ba', 'Cheikh Sy', 'Modou Gueye', 'Pape Mbaye',
@@ -60,7 +70,6 @@ class DatabaseSeeder extends Seeder
             'Cuisine,Cinéma,Danse', 'Mode,Musique,Entrepreneuriat',
         ];
 
-        // ── Créer les hommes ──
         foreach ($hommes as $i => $name) {
             $slug = strtolower(str_replace(' ', '.', $name));
             $user = User::create([
@@ -68,7 +77,6 @@ class DatabaseSeeder extends Seeder
                 'email' => $slug . '@ugb.edu.sn',
                 'password' => $password,
             ]);
-
             Profile::create([
                 'user_id' => $user->id,
                 'age' => rand(18, 25),
@@ -80,12 +88,11 @@ class DatabaseSeeder extends Seeder
                 'field_of_study' => 'Non précisé',
                 'university' => 'UGB',
                 'promotion' => 'P' . rand(28, 33),
+                'photo' => $this->findAvatar('H' . ($i + 1)),
             ]);
-
             Subscription::createTrial($user->id);
         }
 
-        // ── Créer les femmes ──
         foreach ($femmes as $i => $name) {
             $slug = strtolower(str_replace(' ', '.', $name));
             $user = User::create([
@@ -93,7 +100,6 @@ class DatabaseSeeder extends Seeder
                 'email' => $slug . '@ugb.edu.sn',
                 'password' => $password,
             ]);
-
             Profile::create([
                 'user_id' => $user->id,
                 'age' => rand(18, 24),
@@ -105,12 +111,11 @@ class DatabaseSeeder extends Seeder
                 'field_of_study' => 'Non précisé',
                 'university' => 'UGB',
                 'promotion' => 'P' . rand(28, 33),
+                'photo' => $this->findAvatar('F' . ($i + 1)),
             ]);
-
             Subscription::createTrial($user->id);
         }
 
-        // ── Comptes de test ──
         $testH = User::create(['name' => 'Test Homme', 'email' => 'test@ugb.edu.sn', 'password' => $password]);
         Profile::create([
             'user_id' => $testH->id, 'age' => 21, 'gender' => 'homme',
@@ -129,15 +134,35 @@ class DatabaseSeeder extends Seeder
         ]);
         Subscription::createTrial($testF->id);
 
-        // ── Match de démo ──
         $match = Matche::create([
-    'user1_id' => $testH->id,
-    'user2_id' => $testF->id,
-]);
+            'user1_id' => $testH->id,
+            'user2_id' => $testF->id,
+        ]);
         Message::create(['match_id' => $match->id, 'sender_id' => $testH->id, 'message' => 'Salut ! 👋']);
         Message::create(['match_id' => $match->id, 'sender_id' => $testF->id, 'message' => 'Hey ! Comment tu vas ? 😊']);
-        Message::create(['match_id' => $match->id, 'sender_id' => $testH->id, 'message' => 'Bien et toi ? Tu es en quelle filière ?']);
 
         echo "✅ 42 profils créés + 2 comptes test + 1 match démo\n";
+    }
+
+    private function updatePhotos(): void
+    {
+        $hommeUsers = User::whereHas('profile', fn($q) => $q->where('gender', 'homme'))
+            ->where('email', '!=', 'admin@campuscrush.sn')
+            ->where('email', '!=', 'test@ugb.edu.sn')
+            ->orderBy('id')->get();
+        foreach ($hommeUsers as $i => $u) {
+            $photo = $this->findAvatar('H' . ($i + 1));
+            if ($photo) $u->profile->update(['photo' => $photo]);
+        }
+
+        $femmeUsers = User::whereHas('profile', fn($q) => $q->where('gender', 'femme'))
+            ->where('email', '!=', 'aminata@ugb.edu.sn')
+            ->orderBy('id')->get();
+        foreach ($femmeUsers as $i => $u) {
+            $photo = $this->findAvatar('F' . ($i + 1));
+            if ($photo) $u->profile->update(['photo' => $photo]);
+        }
+
+        echo "✅ Photos mises à jour\n";
     }
 }

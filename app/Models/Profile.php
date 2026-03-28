@@ -7,19 +7,9 @@ use Illuminate\Database\Eloquent\Model;
 class Profile extends Model
 {
     protected $fillable = [
-        'user_id',
-        'age',
-        'gender',
-        'ufr',
-        'promotion',
-        'field_of_study',
-        'level',
-        'bio',
-        'interests',
-        'photo',
-        'university',
-        'university_id',
-        'last_seen_at',
+        'user_id', 'age', 'gender', 'ufr', 'promotion',
+        'field_of_study', 'level', 'bio', 'interests',
+        'photo', 'university', 'university_id', 'last_seen_at',
     ];
 
     protected function casts(): array
@@ -29,8 +19,6 @@ class Profile extends Model
             'last_seen_at' => 'datetime',
         ];
     }
-
-    // ── Relations ──
 
     public function user()
     {
@@ -42,27 +30,24 @@ class Profile extends Model
         return $this->belongsTo(University::class, 'university_id');
     }
 
-    // ── Helpers ──
-
     public function getInterestsArrayAttribute(): array
     {
-        if (empty($this->interests)) {
-            return [];
-        }
+        if (empty($this->interests)) return [];
         return array_map('trim', explode(',', $this->interests));
     }
 
     public function getPhotoUrlAttribute(): string
     {
         if ($this->photo) {
+            if (str_starts_with($this->photo, 'avatars/')) {
+                return asset('images/' . $this->photo);
+            }
             return asset('storage/' . $this->photo);
         }
-        return asset('storage/profiles/default-avatar.png');
+        $name = $this->user->name ?? 'CC';
+        return 'https://ui-avatars.com/api/?background=1a1145&color=ff5e6c&bold=true&name=' . urlencode(substr($name, 0, 2));
     }
 
-    /**
-     * Nom de l'université (depuis la relation ou le champ texte legacy).
-     */
     public function getUniversityNameAttribute(): string
     {
         if ($this->universityModel) {
