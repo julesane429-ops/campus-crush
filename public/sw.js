@@ -40,8 +40,9 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
     const { request } = event;
 
-    // Ignorer les requêtes non-GET
-    if (request.method !== 'GET') return;
+    // Ignorer les requêtes non-GET et non-HTTP
+if (request.method !== 'GET') return;
+if (!request.url.startsWith('http')) return;
 
     // Ignorer les requêtes API/AJAX
     if (request.url.includes('/api/') ||
