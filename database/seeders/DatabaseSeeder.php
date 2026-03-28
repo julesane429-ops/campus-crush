@@ -5,203 +5,141 @@ namespace Database\Seeders;
 use Illuminate\Database\Seeder;
 use App\Models\User;
 use App\Models\Profile;
-use App\Models\Like;
 use App\Models\Matche;
 use App\Models\Message;
+use App\Models\Subscription;
 use Illuminate\Support\Facades\Hash;
 
 class DatabaseSeeder extends Seeder
 {
-    /**
-     * Prénoms sénégalais réalistes.
-     */
-    private array $prenomsHommes = [
-        'Moussa', 'Ibrahima', 'Ousmane', 'Abdoulaye', 'Mamadou',
-        'Cheikh', 'Modou', 'Pape', 'Aliou', 'Babacar',
-        'Samba', 'Daouda', 'Lamine', 'Amadou', 'Thierno',
-        'El Hadji', 'Malick', 'Boubacar', 'Assane', 'Souleymane',
-    ];
-
-    private array $prenomsFemmes = [
-        'Aminata', 'Fatou', 'Aissatou', 'Mariama', 'Ndèye',
-        'Khady', 'Awa', 'Coumba', 'Dieynaba', 'Rama',
-        'Sokhna', 'Mame', 'Bintou', 'Adja', 'Yacine',
-        'Astou', 'Maimouna', 'Ndeye', 'Rokhaya', 'Diary',
-    ];
-
-    private array $noms = [
-        'Diop', 'Ndiaye', 'Fall', 'Ba', 'Sow',
-        'Diallo', 'Sy', 'Mbaye', 'Gueye', 'Niang',
-        'Kane', 'Sarr', 'Cissé', 'Touré', 'Ly',
-        'Thiam', 'Faye', 'Wade', 'Diouf', 'Seck',
-    ];
-
-    private array $ufrs = ['SAT', 'SJP', 'LSH', 'S2ATA', 'SEFS'];
-
-    private array $levels = ['L1', 'L2', 'L3', 'M1', 'M2'];
-
-    private array $promotions = ['P28', 'P29', 'P30', 'P31', 'P32'];
-
-    private array $interets = [
-        'Sport', 'Musique', 'Cinéma', 'Voyage', 'Lecture',
-        'Jeux vidéo', 'Cuisine', 'Tech', 'Danse', 'Football',
-        'Photographie', 'Mode', 'Poésie', 'Entrepreneuriat',
-    ];
-
-    private array $bios = [
-        "Passionné(e) de tech et de café ☕. Toujours partant(e) pour une discussion intéressante.",
-        "Étudiant(e) motivé(e), cherche quelqu'un avec qui partager des moments cool sur le campus 😊",
-        "Fan de musique et de bons plats. Viens, on explore Saint-Louis ensemble !",
-        "La vie est trop courte pour s'ennuyer. On se retrouve à la bibliothèque ? 📚",
-        "Sportif/ve le jour, cinéphile la nuit. Ton prochain partenaire de révision ?",
-        "En quête de belles rencontres et de discussions profondes 💭",
-        "J'aime les défis, le football et les thiébou djeun de ma mère 🍚",
-        "Créatif/ve dans l'âme. Musique, art et bonne compagnie, c'est ma recette du bonheur.",
-        "UGB m'a tout donné sauf un(e) partenaire de révision... À toi de jouer !",
-        "Simple, souriant(e) et toujours de bonne humeur. Viens découvrir 😉",
-    ];
-
     public function run(): void
     {
-        // ── Compte de test ──
-        $testUser = User::factory()->create([
-            'name'     => 'Moussa Test',
-            'email'    => 'test@ugb.edu.sn',
-            'password' => Hash::make('password'),
-        ]);
-
-        Profile::create([
-            'user_id'        => $testUser->id,
-            'age'            => 22,
-            'gender'         => 'homme',
-            'ufr'            => 'SAT',
-            'promotion'      => 'P30',
-            'field_of_study' => 'Informatique',
-            'level'          => 'L3',
-            'bio'            => 'Compte de test - Développeur en herbe 🚀',
-            'interests'      => 'Tech,Sport,Musique',
-            'university'     => 'UGB',
-        ]);
-
-        // ── Compte de test femme ──
-        $testFemme = User::factory()->create([
-            'name'     => 'Aminata Test',
-            'email'    => 'aminata@ugb.edu.sn',
-            'password' => Hash::make('password'),
-        ]);
-
-        Profile::create([
-            'user_id'        => $testFemme->id,
-            'age'            => 21,
-            'gender'         => 'femme',
-            'ufr'            => 'SAT',
-            'promotion'      => 'P30',
-            'field_of_study' => 'Mathématiques',
-            'level'          => 'L3',
-            'bio'            => 'Compte de test femme - Amoureuse des maths 📐',
-            'interests'      => 'Lecture,Tech,Voyage',
-            'university'     => 'UGB',
-        ]);
-
-        // ── Générer 20 hommes ──
-        foreach ($this->prenomsHommes as $i => $prenom) {
-            $nom = $this->noms[array_rand($this->noms)];
-            $user = User::factory()->create([
-                'name'  => "$prenom $nom",
-                'email' => strtolower($prenom) . '.' . strtolower($nom) . ($i + 1) . '@ugb.edu.sn',
-            ]);
-
-            Profile::create([
-                'user_id'        => $user->id,
-                'age'            => rand(18, 28),
-                'gender'         => 'homme',
-                'ufr'            => $this->ufrs[array_rand($this->ufrs)],
-                'promotion'      => $this->promotions[array_rand($this->promotions)],
-                'field_of_study' => 'Non précisé',
-                'level'          => $this->levels[array_rand($this->levels)],
-                'bio'            => $this->bios[array_rand($this->bios)],
-                'interests'      => $this->randomInterests(),
-                'university'     => 'UGB',
-            ]);
+        // Ne pas recréer si déjà seedé
+        if (User::where('email', 'test@ugb.edu.sn')->exists()) {
+            return;
         }
 
-        // ── Générer 20 femmes ──
-        foreach ($this->prenomsFemmes as $i => $prenom) {
-            $nom = $this->noms[array_rand($this->noms)];
-            $user = User::factory()->create([
-                'name'  => "$prenom $nom",
-                'email' => strtolower($prenom) . '.' . strtolower($nom) . ($i + 1) . '@ugb.edu.sn',
-            ]);
+        $password = Hash::make('password');
+        $ufrs = ['SAT', 'SJP', 'S2ATA', 'LSH', 'SEFS'];
+        $levels = ['L1', 'L2', 'L3', 'M1', 'M2'];
 
-            Profile::create([
-                'user_id'        => $user->id,
-                'age'            => rand(18, 26),
-                'gender'         => 'femme',
-                'ufr'            => $this->ufrs[array_rand($this->ufrs)],
-                'promotion'      => $this->promotions[array_rand($this->promotions)],
-                'field_of_study' => 'Non précisé',
-                'level'          => $this->levels[array_rand($this->levels)],
-                'bio'            => $this->bios[array_rand($this->bios)],
-                'interests'      => $this->randomInterests(),
-                'university'     => 'UGB',
-            ]);
-        }
-
-        // ── Créer quelques likes et matchs de test ──
-        // Le compte test homme like quelques femmes
-        $femmes = User::whereHas('profile', fn($q) => $q->where('gender', 'femme'))
-            ->limit(5)
-            ->get();
-
-        foreach ($femmes as $femme) {
-            Like::create([
-                'user_id'       => $testUser->id,
-                'liked_user_id' => $femme->id,
-            ]);
-        }
-
-        // Le compte test femme like le test homme → match !
-        Like::create([
-            'user_id'       => $testFemme->id,
-            'liked_user_id' => $testUser->id,
-        ]);
-
-        $match = Matche::create([
-            'user1_id' => min($testUser->id, $testFemme->id),
-            'user2_id' => max($testUser->id, $testFemme->id),
-        ]);
-
-        // Quelques messages de test
-        $messages = [
-            [$testFemme->id, 'Salut ! Comment tu vas ? 😊'],
-            [$testUser->id, 'Hey ! Ça va bien et toi ? Content du match !'],
-            [$testFemme->id, 'Très bien merci ! Tu es en quelle filière ?'],
-            [$testUser->id, 'Je suis en L3 Info à la SAT. Et toi ?'],
-            [$testFemme->id, 'Maths appliquées ! On est voisins de département alors 😄'],
+        // ── Prénoms sénégalais ──
+        $hommes = [
+            'Moussa Diop', 'Ibrahima Fall', 'Ousmane Ndiaye', 'Abdoulaye Sow',
+            'Mamadou Ba', 'Cheikh Sy', 'Modou Gueye', 'Pape Mbaye',
+            'Aliou Diallo', 'Babacar Faye', 'Serigne Niang', 'Demba Cissé',
+            'Lamine Sarr', 'Saliou Diouf', 'Assane Thiam', 'Elhadji Mbodj',
+            'Malick Kane', 'Boubacar Touré', 'Daouda Wade', 'Thierno Ly',
         ];
 
-        foreach ($messages as $i => $msg) {
-            Message::create([
-                'match_id'   => $match->id,
-                'sender_id'  => $msg[0],
-                'message'    => $msg[1],
-                'created_at' => now()->subMinutes(count($messages) - $i),
+        $femmes = [
+            'Aminata Ndiaye', 'Fatou Diop', 'Awa Fall', 'Ndèye Sow',
+            'Mariama Ba', 'Khady Sy', 'Coumba Gueye', 'Dieynaba Mbaye',
+            'Astou Diallo', 'Rama Faye', 'Sokhna Niang', 'Adja Cissé',
+            'Mame Sarr', 'Nabou Diouf', 'Yacine Thiam', 'Seynabou Mbodj',
+            'Aïda Kane', 'Diary Touré', 'Binta Wade', 'Oumou Ly',
+        ];
+
+        $bios = [
+            'Passionné(e) par la vie et les nouvelles rencontres 💫',
+            'Étudiant(e) ambitieux(se), j\'aime le sport et la musique 🎵',
+            'Fan de football et de séries Netflix 🍿',
+            'La vie est belle quand on la partage ❤️',
+            'Tech lover & entrepreneur en herbe 🚀',
+            'J\'adore voyager et découvrir de nouvelles cultures 🌍',
+            'Sourire, c\'est ma philosophie de vie 😊',
+            'Créatif(ve) dans l\'âme, toujours en mouvement 🎨',
+            'Le savoir est la clé du succès 📚',
+            'Simple, humble et déterminé(e) 💪',
+        ];
+
+        $interests = [
+            'Sport,Musique,Cinéma', 'Football,Jeux vidéo,Tech',
+            'Lecture,Voyage,Cuisine', 'Danse,Mode,Entrepreneuriat',
+            'Musique,Voyage,Sport', 'Tech,Lecture,Football',
+            'Cuisine,Cinéma,Danse', 'Mode,Musique,Entrepreneuriat',
+        ];
+
+        // ── Créer les hommes ──
+        foreach ($hommes as $i => $name) {
+            $slug = strtolower(str_replace(' ', '.', $name));
+            $user = User::create([
+                'name' => $name,
+                'email' => $slug . '@ugb.edu.sn',
+                'password' => $password,
             ]);
+
+            Profile::create([
+                'user_id' => $user->id,
+                'age' => rand(18, 25),
+                'gender' => 'homme',
+                'ufr' => $ufrs[array_rand($ufrs)],
+                'level' => $levels[array_rand($levels)],
+                'bio' => $bios[array_rand($bios)],
+                'interests' => $interests[array_rand($interests)],
+                'field_of_study' => 'Non précisé',
+                'university' => 'UGB',
+                'promotion' => 'P' . rand(28, 33),
+            ]);
+
+            Subscription::createTrial($user->id);
         }
 
-        $this->command->info('✅ Seed terminé : 42 utilisateurs, 1 match, 5 messages');
-        $this->command->info('📧 Compte test homme : test@ugb.edu.sn / password');
-        $this->command->info('📧 Compte test femme : aminata@ugb.edu.sn / password');
-    }
+        // ── Créer les femmes ──
+        foreach ($femmes as $i => $name) {
+            $slug = strtolower(str_replace(' ', '.', $name));
+            $user = User::create([
+                'name' => $name,
+                'email' => $slug . '@ugb.edu.sn',
+                'password' => $password,
+            ]);
 
-    /**
-     * Retourne 2-4 intérêts aléatoires séparés par des virgules.
-     */
-    private function randomInterests(): string
-    {
-        $keys = array_rand($this->interets, rand(2, 4));
-        $selected = array_map(fn($k) => $this->interets[$k], (array) $keys);
+            Profile::create([
+                'user_id' => $user->id,
+                'age' => rand(18, 24),
+                'gender' => 'femme',
+                'ufr' => $ufrs[array_rand($ufrs)],
+                'level' => $levels[array_rand($levels)],
+                'bio' => $bios[array_rand($bios)],
+                'interests' => $interests[array_rand($interests)],
+                'field_of_study' => 'Non précisé',
+                'university' => 'UGB',
+                'promotion' => 'P' . rand(28, 33),
+            ]);
 
-        return implode(',', $selected);
+            Subscription::createTrial($user->id);
+        }
+
+        // ── Comptes de test ──
+        $testH = User::create(['name' => 'Test Homme', 'email' => 'test@ugb.edu.sn', 'password' => $password]);
+        Profile::create([
+            'user_id' => $testH->id, 'age' => 21, 'gender' => 'homme',
+            'ufr' => 'SAT', 'level' => 'L3', 'bio' => 'Compte test homme',
+            'interests' => 'Sport,Tech', 'field_of_study' => 'Informatique',
+            'university' => 'UGB', 'promotion' => 'P30',
+        ]);
+        Subscription::createTrial($testH->id);
+
+        $testF = User::create(['name' => 'Aminata Test', 'email' => 'aminata@ugb.edu.sn', 'password' => $password]);
+        Profile::create([
+            'user_id' => $testF->id, 'age' => 20, 'gender' => 'femme',
+            'ufr' => 'LSH', 'level' => 'L2', 'bio' => 'Compte test femme',
+            'interests' => 'Musique,Danse', 'field_of_study' => 'Lettres',
+            'university' => 'UGB', 'promotion' => 'P31',
+        ]);
+        Subscription::createTrial($testF->id);
+
+        // ── Match de démo ──
+        $match = Matche::create([
+            'user1_id' => $testH->id,
+            'user2_id' => $testF->id,
+            'matched_at' => now(),
+        ]);
+
+        Message::create(['match_id' => $match->id, 'sender_id' => $testH->id, 'message' => 'Salut ! 👋']);
+        Message::create(['match_id' => $match->id, 'sender_id' => $testF->id, 'message' => 'Hey ! Comment tu vas ? 😊']);
+        Message::create(['match_id' => $match->id, 'sender_id' => $testH->id, 'message' => 'Bien et toi ? Tu es en quelle filière ?']);
+
+        echo "✅ 42 profils créés + 2 comptes test + 1 match démo\n";
     }
 }
