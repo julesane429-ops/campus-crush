@@ -1,5 +1,6 @@
 <!doctype html>
 <html lang="fr">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -8,14 +9,39 @@
     <script src="https://cdn.tailwindcss.com/3.4.17"></script>
     <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        * { font-family: 'Sora', sans-serif; box-sizing: border-box; }
-        body { background: #0c0a1a; color: #f0eef5; }
-        .admin-surface { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); backdrop-filter: blur(20px); }
-        .admin-card { background: linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02)); border: 1px solid rgba(255,255,255,0.08); }
-        .cc-gradient-text { background: linear-gradient(135deg, #ff5e6c, #ff8a5c, #ffc145); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-        .cc-mono { font-family: 'Space Mono', monospace; }
+        * {
+            font-family: 'Sora', sans-serif;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #0c0a1a;
+            color: #f0eef5;
+        }
+
+        .admin-surface {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            backdrop-filter: blur(20px);
+        }
+
+        .admin-card {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .cc-gradient-text {
+            background: linear-gradient(135deg, #ff5e6c, #ff8a5c, #ffc145);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .cc-mono {
+            font-family: 'Space Mono', monospace;
+        }
     </style>
 </head>
+
 <body class="min-h-screen">
 
     {{-- Admin Sidebar / Header --}}
@@ -49,10 +75,16 @@
                 </a>
             </nav>
 
-            <div class="pt-6 border-t border-white/5">
+            <div class="pt-6 border-t border-white/5 space-y-3">
                 <a href="{{ route('swipe') }}" class="flex items-center gap-2 text-xs text-white/30 hover:text-white transition">
                     ← Retour à l'app
                 </a>
+                <form method="POST" action="{{ route('logout') }}">
+                    @csrf
+                    <button type="submit" class="flex items-center gap-2 text-xs text-red-400/60 hover:text-red-400 transition">
+                        🚪 Déconnexion
+                    </button>
+                </form>
             </div>
         </aside>
 
@@ -87,4 +119,5 @@
         </main>
     </div>
 </body>
+
 </html>
