@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    @include('components.pwa-meta')
     <meta name="theme-color" content="#0c0a1a">
     <meta name="user-id" content="{{ Auth::id() }}">
     <title>Campus Crush</title>
@@ -416,5 +417,6 @@ window.Echo = new Echo({
 });
 } catch(e) { console.log('Reverb not available, real-time disabled'); }
 </script>
+@include('components.pwa-install-banner')
 </body>
 </html>

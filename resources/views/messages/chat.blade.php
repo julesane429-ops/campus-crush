@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    @include('components.pwa-meta')
     <title>Campus Crush - Chat</title>
     <script src="https://cdn.tailwindcss.com/3.4.17"></script>
     <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -488,6 +489,7 @@ window.Echo = new Echo({
             if (!document.getElementById('emoji-picker').contains(e.target)) document.getElementById('emoji-picker').classList.add('hidden');
         });
     </script>
+    @include('components.pwa-install-banner')
 </body>
 
 </html>

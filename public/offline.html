@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#ff5e6c">
+    <title>Campus Crush - Hors ligne</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Sora', -apple-system, sans-serif; }
+        body {
+            background: linear-gradient(160deg, #0c0a1a 0%, #1a1145 40%, #0f1a3a 100%);
+            color: #f0eef5;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            text-align: center;
+            padding: 2rem;
+            max-width: 360px;
+        }
+        .emoji { font-size: 4rem; margin-bottom: 1.5rem; }
+        h1 {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, #ff5e6c, #ff8a5c, #ffc145);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        p { color: rgba(255,255,255,0.4); font-size: 0.875rem; margin-bottom: 2rem; line-height: 1.6; }
+        .btn {
+            display: inline-block;
+            padding: 1rem 2rem;
+            border-radius: 1rem;
+            font-weight: 600;
+            color: white;
+            text-decoration: none;
+            background: linear-gradient(135deg, #ff5e6c, #ff8a5c);
+            box-shadow: 0 8px 30px rgba(255,94,108,0.3);
+            transition: transform 0.2s;
+        }
+        .btn:active { transform: scale(0.95); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="emoji">📡</div>
+        <h1>Pas de connexion</h1>
+        <p>On dirait que tu es hors ligne. Vérifie ta connexion internet et réessaie.</p>
+        <a href="/" class="btn" onclick="window.location.reload(); return false;">Réessayer</a>
+    </div>
+</body>
+</html>
