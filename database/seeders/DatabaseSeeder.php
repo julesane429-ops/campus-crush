@@ -131,11 +131,9 @@ class DatabaseSeeder extends Seeder
 
         // ── Match de démo ──
         $match = Matche::create([
-            'user1_id' => $testH->id,
-            'user2_id' => $testF->id,
-            'matched_at' => now(),
-        ]);
-
+    'user1_id' => $testH->id,
+    'user2_id' => $testF->id,
+]);
         Message::create(['match_id' => $match->id, 'sender_id' => $testH->id, 'message' => 'Salut ! 👋']);
         Message::create(['match_id' => $match->id, 'sender_id' => $testF->id, 'message' => 'Hey ! Comment tu vas ? 😊']);
         Message::create(['match_id' => $match->id, 'sender_id' => $testH->id, 'message' => 'Bien et toi ? Tu es en quelle filière ?']);
