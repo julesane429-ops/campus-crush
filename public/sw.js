@@ -7,9 +7,7 @@ const PRECACHE_URLS = [
     '/offline.html',
     '/images/icons/icon-192x192.png',
     '/images/icons/icon-512x512.png',
-    'https://cdn.tailwindcss.com/3.4.17',
-    'https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&display=swap',
-];
+];;
 
 // Installation - mise en cache des ressources essentielles
 self.addEventListener('install', (event) => {
