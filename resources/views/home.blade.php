@@ -60,6 +60,9 @@
                 <a href="{{ route('login') }}" class="text-sm text-white/50 hover:text-white transition hidden sm:block">Connexion</a>
                 <a href="{{ route('register') }}" class="cc-btn cc-btn-primary text-sm !py-2.5 !px-5">S'inscrire</a>
             </div>
+                    <a href="/install" class="inline-flex items-center gap-2 px-6 py-3 rounded-2xl text-sm font-semibold text-white border border-white/10 hover:bg-white/5 transition">
+    📲 Installer l'app
+</a>
         </div>
     </nav>
 
