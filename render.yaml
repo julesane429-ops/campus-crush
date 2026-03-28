@@ -1,0 +1,35 @@
+# render.yaml - Configuration Render.com pour Campus Crush
+# Place ce fichier à la racine de ton projet GitHub
+
+services:
+  - type: web
+    name: campuscrush
+    runtime: php
+    plan: free
+    buildCommand: chmod +x render-build.sh && ./render-build.sh
+    startCommand: php artisan serve --host=0.0.0.0 --port=$PORT
+    envVars:
+      - key: APP_NAME
+        value: "Campus Crush"
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: "false"
+      - key: APP_URL
+        generateFrom: https://%s.onrender.com
+      - key: APP_KEY
+        generateValue: true
+      - key: LOG_CHANNEL
+        value: stderr
+      - key: DB_CONNECTION
+        value: pgsql
+      - key: SESSION_DRIVER
+        value: cookie
+      - key: CACHE_STORE
+        value: file
+      - key: QUEUE_CONNECTION
+        value: sync
+      - key: BROADCAST_CONNECTION
+        value: log
+      - key: FILESYSTEM_DISK
+        value: public

@@ -1,0 +1,13 @@
+.git
+node_modules
+vendor
+.env
+.env.production
+storage/logs/*
+storage/framework/sessions/*
+storage/framework/views/*
+storage/framework/cache/*
+tests
+.vscode
+.idea
+database/database.sqlite
