@@ -283,5 +283,9 @@
 
     @stack('scripts')
     @include('components.pwa-install-banner')
+    
+    @auth
+    @include('components.push-notifications')
+@endauth
 </body>
 </html>

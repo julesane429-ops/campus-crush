@@ -41,7 +41,7 @@
                 <span class="text-white/30 text-xs">○</span>
                 <span class="text-xs text-white/30">Notifications désactivées</span>
             </div>
-            <button onclick="enablePushNotifications()" class="w-full py-3 rounded-xl text-xs font-semibold text-white transition hover:-translate-y-0.5" style="background: linear-gradient(135deg, #ff5e6c, #ff8a5c);">
+            <button onclick="if(typeof enablePushNotifications==='function') enablePushNotifications(); else alert('Recharge la page et réessaie.');" class="w-full py-3 rounded-xl text-xs font-semibold text-white transition hover:-translate-y-0.5" style="background: linear-gradient(135deg, #ff5e6c, #ff8a5c);">
                 Activer les notifications 🔔
             </button>
         </div>

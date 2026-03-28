@@ -53,6 +53,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/notifications', [NotificationController::class, 'index']);
     Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead']);
     Route::post('/notifications/{id}/read', [NotificationController::class, 'markRead']);
+
+    Route::post('/push/subscribe', [App\Http\Controllers\PushController::class, 'subscribe']);
+Route::post('/push/unsubscribe', [App\Http\Controllers\PushController::class, 'unsubscribe']);
 });
 
 // ── Routes avec abonnement requis ──
