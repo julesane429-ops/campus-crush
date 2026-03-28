@@ -13,6 +13,7 @@ use App\Services\CompatibilityService;
 use App\Events\NewMatch;
 use App\Notifications\NewMatchNotification;
 use Illuminate\Support\Facades\Auth;
+use App\Services\WebPushService;
 
 class SwipeController extends Controller
 {
@@ -130,6 +131,9 @@ class SwipeController extends Controller
                 'user1_id' => min($user->id, $id),
                 'user2_id' => max($user->id, $id),
             ]);
+
+            // Push notification
+            app(WebPushService::class)->notifyNewMatch($targetUser, Auth::user()->name);
 
             // 🔔 Notifications pour les deux utilisateurs
             $user->notify(new NewMatchNotification($match, $targetUser));

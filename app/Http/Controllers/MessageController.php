@@ -11,6 +11,8 @@ use App\Events\UserTyping;
 use App\Notifications\NewMessageNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use App\Services\WebPushService;
+use Illuminate\Support\Str;
 
 class MessageController extends Controller
 {
@@ -96,6 +98,12 @@ class MessageController extends Controller
         // 📩 Notification pour l'autre utilisateur
         $otherUser = $match->getOtherUser($user->id);
         $otherUser->notify(new NewMessageNotification($message));
+
+        // Après le message :
+app(WebPushService::class)->notifyNewMessage(
+    $otherUser, Auth::user()->name,
+    Str::limit($message->message, 50), $match->id
+);
 
         // Broadcast notification sur le canal privé
         broadcast(new \App\Events\NewMatch($match, $user))->toOthers();
