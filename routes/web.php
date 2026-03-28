@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Route;
 
 // ── Public ──
 Route::get('/', [HomeController::class, 'index'])->name('home');
+Route::get('/install', fn() => view('install'))->name('install');
 
 // ── Auth ──
 Route::middleware('guest')->group(function () {
