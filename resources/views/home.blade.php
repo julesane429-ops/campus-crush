@@ -141,6 +141,9 @@
             </div>
             <p class="text-xs text-white/20">© 2026 · Fait avec ❤️ pour l'UGB Saint-Louis, Sénégal</p>
         </div>
+        <a href="/install" class="inline-flex items-center gap-2 px-6 py-3 rounded-2xl text-sm font-semibold text-white border border-white/10 hover:bg-white/5 transition">
+    📲 Installer l'app
+</a>
     </footer>
 </div>
 @include('components.pwa-install-banner')
