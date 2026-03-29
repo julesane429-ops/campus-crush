@@ -256,241 +256,153 @@ $otherProfile = $other->profile;
     </div>
 
     {{-- Pusher + Echo CDN --}}
-    @if(config('broadcasting.default') !== 'log')
-<script src="https://js.pusher.com/8.2.0/pusher.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/laravel-echo/1.15.0/echo.iife.js"></script>
-@endif
+    <?php if(config('broadcasting.default') !== 'log'): ?>
+    <script src="https://js.pusher.com/8.2.0/pusher.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/laravel-echo/1.15.0/echo.iife.js"></script>
+    <?php endif; ?>
 
     <script>
-        // ═══════════════════════════════════════════
-        // SETUP ECHO / REVERB
-        // ═══════════════════════════════════════════
-        <?php
-    $rKey = config('broadcasting.connections.reverb.key', 'campuscrush-key');
-    $rHost = config('reverb.servers.reverb.hostname', 'localhost');
-    $rPort = config('reverb.servers.reverb.port', 8080);
-?>
+    const matchId = @json($match->id);
+    const myId = @json(Auth::id());
+    const chatArea = document.getElementById('chat-area');
+    const typingEl = document.getElementById('typing-indicator');
+    const statusDot = document.getElementById('status-dot');
+    const statusText = document.getElementById('status-text');
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
 
-window.Pusher = Pusher;
-window.Echo = new Echo({
-    broadcaster: 'pusher',
-    key: '<?php echo $rKey; ?>',
-    cluster: 'mt1',
-    wsHost: '<?php echo $rHost; ?>',
-    wsPort: <?php echo $rPort; ?>,
-    wssPort: <?php echo $rPort; ?>,
-    forceTLS: false,
-    enabledTransports: ['ws'],
-    disableStats: true,
-});
-        const matchId = @json($match -> id);
-        const myId = @json(Auth::id());
-        const chatArea = document.getElementById('chat-area');
-        const typingEl = document.getElementById('typing-indicator');
-        const statusDot = document.getElementById('status-dot');
-        const statusText = document.getElementById('status-text');
-        const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+    <?php if(config('broadcasting.default') !== 'log'): ?>
+    <?php
+        $rKey = config('broadcasting.connections.reverb.key', 'campuscrush-key');
+        $rHost = config('reverb.servers.reverb.hostname', 'localhost');
+        $rPort = config('reverb.servers.reverb.port', 8080);
+    ?>
+    window.Pusher = Pusher;
+    window.Echo = new Echo({
+        broadcaster: 'pusher',
+        key: '<?php echo $rKey; ?>',
+        cluster: 'mt1',
+        wsHost: '<?php echo $rHost; ?>',
+        wsPort: <?php echo $rPort; ?>,
+        wssPort: <?php echo $rPort; ?>,
+        forceTLS: false,
+        enabledTransports: ['ws'],
+        disableStats: true,
+    });
 
-        // ═══════════════════════════════════════════
-        // PRESENCE CHANNEL - Online status + Typing
-        // ═══════════════════════════════════════════
-        const channel = Echo.join(`chat.${matchId}`);
+    const channel = Echo.join('chat.' + matchId);
 
-        channel.here(users => {
-            const otherOnline = users.some(u => u.id !== myId);
-            setOnlineStatus(otherOnline);
-        });
+    channel.here(users => {
+        setOnlineStatus(users.some(u => u.id !== myId));
+    });
+    channel.joining(user => { if (user.id !== myId) setOnlineStatus(true); });
+    channel.leaving(user => { if (user.id !== myId) setOnlineStatus(false); });
 
-        channel.joining(user => {
-            if (user.id !== myId) setOnlineStatus(true);
-        });
+    channel.listen('.MessageSent', (data) => {
+        if (data.senderId === myId) return;
+        typingEl.classList.add('hidden');
+        const div = document.createElement('div');
+        div.className = 'flex items-end gap-2 max-w-[82%] msg-in new-msg-flash';
+        div.innerHTML = '<img src="' + (data.senderPhoto || '') + '" class="w-6 h-6 rounded-full object-cover flex-shrink-0" alt=""><div><div class="bubble-received px-4 py-2.5">' + (data.message ? '<p class="text-[13px] leading-relaxed text-white/80">' + escapeHtml(data.message) + '</p>' : '') + '</div><span class="text-[10px] text-white/20 mt-1 block" style="font-family:monospace">' + data.time + '</span></div>';
+        chatArea.insertBefore(div, typingEl);
+        chatArea.scrollTop = chatArea.scrollHeight;
+        fetch('/messages/' + matchId, { headers: { 'X-CSRF-TOKEN': csrfToken } });
+    });
 
-        channel.leaving(user => {
-            if (user.id !== myId) setOnlineStatus(false);
-        });
+    let typingTimeout;
+    channel.listen('.UserTyping', (data) => {
+        if (data.userId === myId) return;
+        typingEl.classList.remove('hidden');
+        chatArea.scrollTop = chatArea.scrollHeight;
+        clearTimeout(typingTimeout);
+        typingTimeout = setTimeout(() => typingEl.classList.add('hidden'), 2500);
+    });
 
-        // ═══════════════════════════════════════════
-        // REAL-TIME MESSAGES
-        // ═══════════════════════════════════════════
-        channel.listen('.MessageSent', (data) => {
-            if (data.senderId === myId) return; // ignore own messages
+    let lastTypingSent = 0;
+    document.getElementById('msg-input').addEventListener('input', () => {
+        const now = Date.now();
+        if (now - lastTypingSent > 1500) {
+            lastTypingSent = now;
+            fetch('/typing/' + matchId, { method: 'POST', headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' } }).catch(() => {});
+        }
+    });
+    <?php endif; ?>
 
-            // Hide typing
-            typingEl.classList.add('hidden');
+    function setOnlineStatus(online) {
+        statusDot.className = 'w-1.5 h-1.5 rounded-full ' + (online ? 'bg-green-400 animate-pulse' : 'bg-white/20');
+        statusText.textContent = online ? 'En ligne' : 'Hors ligne';
+    }
 
-            // Create message bubble
+    function escapeHtml(text) {
+        const d = document.createElement('div');
+        d.textContent = text;
+        return d.innerHTML;
+    }
+
+    // FORM SUBMIT (AJAX)
+    document.getElementById('msg-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const input = document.getElementById('msg-input');
+        const text = input.value.trim();
+        const attachInput = document.getElementById('attach-input');
+        if (!text && attachInput.files.length === 0) return;
+
+        if (text) {
             const div = document.createElement('div');
-            div.className = 'flex items-end gap-2 max-w-[82%] msg-in new-msg-flash';
-            div.innerHTML = `
-        <img src="${data.senderPhoto}" class="w-6 h-6 rounded-full object-cover flex-shrink-0" alt="">
-        <div>
-            <div class="bubble-received px-4 py-2.5">
-                ${data.message ? `<p class="text-[13px] leading-relaxed text-white/80">${escapeHtml(data.message)}</p>` : ''}
-                ${data.attachments && data.attachments.length ? `<div class="flex flex-wrap gap-1.5 mt-2">${data.attachments.map(a => `<a href="${a.url}" target="_blank"><img src="${a.url}" class="w-20 h-20 object-cover rounded-xl" alt=""></a>`).join('')}</div>` : ''}
-            </div>
-            <span class="text-[10px] text-white/20 mt-1 block" style="font-family:monospace">${data.time}</span>
-        </div>
-    `;
-
-            // Insert before typing indicator
+            div.className = 'flex items-end gap-2 max-w-[82%] ml-auto flex-row-reverse msg-in';
+            const now = new Date();
+            const time = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+            div.innerHTML = '<div><div class="bubble-sent px-4 py-2.5"><p class="text-[13px] leading-relaxed text-white">' + escapeHtml(text) + '</p></div><span class="text-[10px] text-white/20 mt-1 block text-right" style="font-family:monospace">' + time + '</span></div>';
             chatArea.insertBefore(div, typingEl);
             chatArea.scrollTop = chatArea.scrollHeight;
-
-            // Mark as read via fetch
-            fetch(`/messages/${matchId}`, {
-                headers: {
-                    'X-CSRF-TOKEN': csrfToken
-                }
-            });
-        });
-
-        // ═══════════════════════════════════════════
-        // TYPING INDICATOR
-        // ═══════════════════════════════════════════
-        let typingTimeout;
-        channel.listen('.UserTyping', (data) => {
-            if (data.userId === myId) return;
-            typingEl.classList.remove('hidden');
-            chatArea.scrollTop = chatArea.scrollHeight;
-            clearTimeout(typingTimeout);
-            typingTimeout = setTimeout(() => typingEl.classList.add('hidden'), 2500);
-        });
-
-        // Send typing event on input
-        let lastTypingSent = 0;
-        document.getElementById('msg-input').addEventListener('input', () => {
-            const now = Date.now();
-            if (now - lastTypingSent > 1500) {
-                lastTypingSent = now;
-                fetch(`/typing/${matchId}`, {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRF-TOKEN': csrfToken,
-                        'Accept': 'application/json'
-                    }
-                }).catch(() => {});
-            }
-        });
-
-        // ═══════════════════════════════════════════
-        // HELPERS
-        // ═══════════════════════════════════════════
-        function setOnlineStatus(online) {
-            statusDot.className = `w-1.5 h-1.5 rounded-full ${online ? 'bg-green-400 animate-pulse' : 'bg-white/20'}`;
-            statusText.textContent = online ? 'En ligne' : 'Hors ligne';
         }
 
-        function escapeHtml(text) {
-            const d = document.createElement('div');
-            d.textContent = text;
-            return d.innerHTML;
-        }
+        const fd = new FormData(this);
+        input.value = '';
+        document.getElementById('attach-preview').classList.add('hidden');
+        document.getElementById('attach-preview').innerHTML = '';
 
-        // ═══════════════════════════════════════════
-        // FORM SUBMIT (AJAX for smooth UX)
-        // ═══════════════════════════════════════════
-        document.getElementById('msg-form').addEventListener('submit', function(e) {
-            e.preventDefault();
-            const input = document.getElementById('msg-input');
-            const text = input.value.trim();
-            const attachInput = document.getElementById('attach-input');
+        fetch(this.action, {
+            method: 'POST', body: fd,
+            headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+            credentials: 'same-origin'
+        }).catch(err => console.error('Send error:', err));
 
-            if (!text && attachInput.files.length === 0) return;
+        attachInput.value = '';
+    });
 
-            // Optimistic UI: add message immediately
-            if (text) {
-                const div = document.createElement('div');
-                div.className = 'flex items-end gap-2 max-w-[82%] ml-auto flex-row-reverse msg-in';
-                const now = new Date();
-                const time = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
-                div.innerHTML = `
-            <div>
-                <div class="bubble-sent px-4 py-2.5">
-                    <p class="text-[13px] leading-relaxed text-white">${escapeHtml(text)}</p>
-                </div>
-                <span class="text-[10px] text-white/20 mt-1 block text-right" style="font-family:monospace">${time}</span>
-            </div>
-        `;
-                chatArea.insertBefore(div, typingEl);
-                chatArea.scrollTop = chatArea.scrollHeight;
-            }
+    // SCROLL, MENU, ATTACHMENTS, EMOJIS
+    chatArea.scrollTop = chatArea.scrollHeight;
 
-            // Send to server
-            const fd = new FormData(this);
-            input.value = '';
-            document.getElementById('attach-preview').classList.add('hidden');
-            document.getElementById('attach-preview').innerHTML = '';
+    window.addEventListener('click', e => {
+        const m = document.getElementById('chat-menu');
+        if (!m.contains(e.target) && !e.target.closest('[onclick]')) m.classList.add('hidden');
+    });
 
-            fetch(this.action, {
-                method: 'POST',
-                body: fd,
-                headers: {
-                    'X-CSRF-TOKEN': csrfToken,
-                    'Accept': 'application/json'
-                },
-                credentials: 'same-origin'
-            }).catch(err => console.error('Send error:', err));
-
-            // Reset file input
-            attachInput.value = '';
+    const aBtn = document.getElementById('attach-btn'), aInput = document.getElementById('attach-input'), aPrev = document.getElementById('attach-preview');
+    aBtn.onclick = () => aInput.click();
+    aInput.onchange = () => {
+        aPrev.innerHTML = '';
+        const files = Array.from(aInput.files);
+        if (files.length) aPrev.classList.remove('hidden'); else { aPrev.classList.add('hidden'); return; }
+        files.forEach(f => {
+            const r = new FileReader();
+            r.onload = e => { const img = document.createElement('img'); img.src=e.target.result; img.className='w-14 h-14 object-cover rounded-xl flex-shrink-0'; aPrev.appendChild(img); };
+            r.readAsDataURL(f);
         });
+    };
 
-        // ═══════════════════════════════════════════
-        // SCROLL, MENU, ATTACHMENTS, EMOJIS
-        // ═══════════════════════════════════════════
-        chatArea.scrollTop = chatArea.scrollHeight;
-
-        window.addEventListener('click', e => {
-            const m = document.getElementById('chat-menu');
-            if (!m.contains(e.target) && !e.target.closest('[onclick]')) m.classList.add('hidden');
-        });
-
-        const aBtn = document.getElementById('attach-btn'),
-            aInput = document.getElementById('attach-input'),
-            aPrev = document.getElementById('attach-preview');
-        aBtn.onclick = () => aInput.click();
-        aInput.onchange = () => {
-            aPrev.innerHTML = '';
-            const files = Array.from(aInput.files);
-            if (files.length) aPrev.classList.remove('hidden');
-            else {
-                aPrev.classList.add('hidden');
-                return;
-            }
-            files.forEach(f => {
-                const r = new FileReader();
-                r.onload = e => {
-                    const img = document.createElement('img');
-                    img.src = e.target.result;
-                    img.className = 'w-14 h-14 object-cover rounded-xl flex-shrink-0';
-                    aPrev.appendChild(img);
-                };
-                r.readAsDataURL(f);
-            });
-        };
-
-        const emojis = ['😊', '😂', '😍', '😎', '👍', '🎉', '❤️', '😢', '🤔', '😜', '🥳', '🤩', '💯', '🔥', '🙌', '😘', '🥰', '💕', '👋', '✨', '💪', '🎶'];
-        const picker = document.getElementById('emoji-picker').querySelector('.emoji-grid');
-        const msgInput = document.getElementById('msg-input');
-        emojis.forEach(em => {
-            const b = document.createElement('button');
-            b.type = 'button';
-            b.textContent = em;
-            b.className = 'text-xl p-1.5 rounded-lg hover:bg-white/10 transition';
-            b.onclick = () => {
-                msgInput.value += em;
-                msgInput.focus();
-            };
-            picker.appendChild(b);
-        });
-        document.getElementById('emoji-toggle').onclick = e => {
-            e.stopPropagation();
-            document.getElementById('emoji-picker').classList.toggle('hidden');
-        };
-        document.addEventListener('click', e => {
-            if (!document.getElementById('emoji-picker').contains(e.target)) document.getElementById('emoji-picker').classList.add('hidden');
-        });
-    </script>
+    const emojis = ['😊','😂','😍','😎','👍','🎉','❤️','😢','🤔','😜','🥳','🤩','💯','🔥','🙌','😘','🥰','💕','👋','✨','💪','🎶'];
+    const picker = document.getElementById('emoji-picker').querySelector('.emoji-grid');
+    const msgInput = document.getElementById('msg-input');
+    emojis.forEach(em => {
+        const b = document.createElement('button'); b.type='button'; b.textContent=em;
+        b.className='text-xl p-1.5 rounded-lg hover:bg-white/10 transition';
+        b.onclick = () => { msgInput.value += em; msgInput.focus(); };
+        picker.appendChild(b);
+    });
+    document.getElementById('emoji-toggle').onclick = e => { e.stopPropagation(); document.getElementById('emoji-picker').classList.toggle('hidden'); };
+    document.addEventListener('click', e => { if (!document.getElementById('emoji-picker').contains(e.target)) document.getElementById('emoji-picker').classList.add('hidden'); });
+</script>
     @include('components.pwa-install-banner')
 </body>
 
