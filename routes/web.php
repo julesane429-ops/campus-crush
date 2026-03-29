@@ -14,6 +14,9 @@ use Illuminate\Support\Facades\Route;
 // ── Public ──
 Route::get('/', [HomeController::class, 'index'])->name('home');
 Route::get('/install', fn() => view('install'))->name('install');
+Route::get('/terms', fn() => view('legal.terms'))->name('legal.terms');
+Route::get('/privacy', fn() => view('legal.privacy'))->name('legal.privacy');
+Route::get('/safety', fn() => view('legal.safety'))->name('legal.safety');
 
 // ── Auth ──
 Route::middleware('guest')->group(function () {

@@ -56,7 +56,16 @@
 
                 <div id="error-msg" class="hidden text-red-400 text-xs text-center bg-red-500/10 py-2.5 px-4 rounded-xl border border-red-500/10"></div>
                 <div id="success-msg" class="hidden text-green-400 text-xs text-center bg-green-500/10 py-2.5 px-4 rounded-xl border border-green-500/10"></div>
-
+                <label class="flex items-start gap-3 cursor-pointer mt-4">
+    <input type="checkbox" name="terms" required class="mt-1 accent-[#ff5e6c]">
+    <span class="text-xs text-white/40 leading-relaxed">
+        En créant un compte, j'accepte les
+        <a href="/terms" target="_blank" class="text-[#ff5e6c] underline">conditions d'utilisation</a>
+        et la
+        <a href="/privacy" target="_blank" class="text-[#ff5e6c] underline">politique de confidentialité</a>.
+        Je confirme avoir au moins 18 ans.
+    </span>
+</label>
                 <button type="submit" id="submit-btn" class="w-full py-4 rounded-2xl font-semibold text-white text-base transition hover:-translate-y-0.5 active:scale-[0.98]" style="background: linear-gradient(135deg, #ff5e6c, #ff8a5c); box-shadow: 0 8px 30px rgba(255,94,108,0.3);">
                     Créer mon compte
                 </button>

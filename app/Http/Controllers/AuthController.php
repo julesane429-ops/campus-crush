@@ -22,6 +22,7 @@ class AuthController extends Controller
             'prenom'   => 'required|string|max:255',
             'email'    => 'required|email|unique:users,email',
             'password' => ['required', 'confirmed', Password::min(6)],
+            'terms' => 'required|accepted',
         ]);
 
         $user = User::create([
@@ -32,7 +33,7 @@ class AuthController extends Controller
 
         // 🎁 Créer l'essai gratuit de 30 jours
         Subscription::createTrial($user->id);
-
+        
         Auth::login($user);
 
         if ($request->expectsJson()) {

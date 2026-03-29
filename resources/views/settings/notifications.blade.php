@@ -1,6 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
+@include('components.push-notifications')
 <div class="cc-bg-main cc-bg-noise min-h-screen flex justify-center">
 <div class="relative z-10 w-full max-w-md text-white px-5 py-8">
 
