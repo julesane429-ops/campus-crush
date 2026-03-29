@@ -82,7 +82,7 @@ class MessageController extends Controller
             foreach ($request->file('attachment') as $file) {
                 Attachment::create([
                     'message_id' => $message->id,
-                    'file_path' => $file->store('attachments', 'public'),
+                    'file_path' => $file->store('attachments', config('filesystems.default') === 's3' ? 's3' : 'public'),
                     'file_type' => $file->getMimeType(),
                 ]);
             }

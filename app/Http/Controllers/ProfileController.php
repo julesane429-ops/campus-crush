@@ -54,7 +54,8 @@ class ProfileController extends Controller
 
         $photoPath = null;
         if ($request->hasFile('photo')) {
-            $photoPath = $request->file('photo')->store('profiles', 'public');
+            $disk = config('filesystems.default') === 's3' ? 's3' : 'public';
+$photoPath = $request->file('photo')->store('profiles', $disk);
         }
 
         // Déterminer l'université
@@ -144,8 +145,10 @@ class ProfileController extends Controller
         }
 
         if ($request->hasFile('photo')) {
-            if ($profile->photo) Storage::disk('public')->delete($profile->photo);
-            $data['photo'] = $request->file('photo')->store('profiles', 'public');
+            $diskDel = config('filesystems.default') === 's3' ? 's3' : 'public';
+if ($profile->photo) Storage::disk($diskDel)->delete($profile->photo);
+            $disk = config('filesystems.default') === 's3' ? 's3' : 'public';
+$data['photo'] = $request->file('photo')->store('profiles', $disk);
         }
 
         $profile->update($data);
@@ -157,7 +160,8 @@ class ProfileController extends Controller
     {
         $request->validateWithBag('userDeletion', ['password' => ['required', 'current_password']]);
         $user = $request->user();
-        if ($user->profile?->photo) Storage::disk('public')->delete($user->profile->photo);
+        $disk = config('filesystems.default') === 's3' ? 's3' : 'public';
+if ($user->profile?->photo) Storage::disk($disk)->delete($user->profile->photo);
         Auth::logout();
         $user->delete();
         $request->session()->invalidate();

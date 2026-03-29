@@ -45,7 +45,8 @@ class RegisteredUserController extends Controller
 
     // upload photo
     if ($request->hasFile('photo')) {
-        $path = $request->file('photo')->store('photos', 'public');
+        $disk = config('filesystems.default') === 's3' ? 's3' : 'public';
+$path = $request->file('photo')->store('photos', $disk);
         $user->photo = $path;
         $user->save();
     }
