@@ -267,7 +267,7 @@
                 <div class="relative -mr-6 z-10">
                     <div class="w-32 h-32 md:w-40 md:h-40 rounded-full photo-glow overflow-hidden border-4 border-white">
                         <img src="{{ Auth::user()->profile?->photo 
-                        ? asset('storage/'.Auth::user()->profile->photo) 
+                        ? Auth::user()->profile->photo_url 
                         : asset('profiles/default-avatar.png') }}"
                             class="w-full h-full object-cover">
                     </div>

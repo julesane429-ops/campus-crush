@@ -102,7 +102,7 @@
         <a href="{{ route('profile.show') }}" class="relative group">
             @if($user->profile && $user->profile->photo)
             <div class="w-10 h-10 rounded-full overflow-hidden ring-2 ring-white/10 group-hover:ring-[#ff5e6c]/50 transition-all">
-                <img src="{{ asset('storage/'.$user->profile->photo) }}" class="w-full h-full object-cover" alt="">
+                <img src="{{ $user->profile->photo_url }}" class="w-full h-full object-cover" alt="">
             </div>
             @else
             <div class="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center ring-2 ring-white/10 group-hover:ring-[#ff5e6c]/50 transition-all">

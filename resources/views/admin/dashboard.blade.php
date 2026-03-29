@@ -41,7 +41,7 @@
             <div class="flex items-center gap-3 text-sm">
                 <div class="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-xs overflow-hidden">
                     @if($u->profile?->photo)
-                    <img src="{{ asset('storage/'.$u->profile->photo) }}" class="w-full h-full object-cover">
+                    <img src="{{ $u->profile->photo_url }}" class="w-full h-full object-cover">
                     @else
                     {{ substr($u->name, 0, 1) }}
                     @endif

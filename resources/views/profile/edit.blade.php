@@ -23,7 +23,7 @@
                 <label class="text-xs text-white/40 uppercase tracking-wider mb-2 block">Photo</label>
                 <input type="file" name="photo" id="photo" accept="image/*" class="cc-input text-sm file:mr-3 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-xs file:bg-[#ff5e6c]/20 file:text-[#ff5e6c]">
                 <div id="photo-preview" class="flex gap-3 mt-3">
-                    @if($profile->photo)<img src="{{ asset('storage/'.$profile->photo) }}" class="w-20 h-20 rounded-xl object-cover">@endif
+                    <img src="{{ $profile->photo_url }}" class="w-20 h-20 rounded-xl object-cover">
                 </div>
             </div>
 

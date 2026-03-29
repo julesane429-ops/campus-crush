@@ -129,7 +129,7 @@ $otherProfile = $other->profile;
 
             <div class="w-10 h-10 rounded-full p-[2px] flex-shrink-0" style="background: linear-gradient(135deg, #ff5e6c, #ffc145);">
                 <div class="w-full h-full rounded-full overflow-hidden">
-                    <img src="{{ $otherProfile?->photo_url ?? asset('storage/profiles/default-avatar.png') }}" class="w-full h-full object-cover" alt="">
+                    <img src="{{ $otherProfile?->photo_url ?? 'https://ui-avatars.com/api/?background=1a1145&color=ff5e6c&bold=true&name=CC' }}" class="w-full h-full object-cover" alt="">
                 </div>
             </div>
 
@@ -181,7 +181,7 @@ $otherProfile = $other->profile;
                 style="animation-delay: 0s">
 
                 @if($msg->sender_id != $myId)
-                <img src="{{ $msg->sender->profile?->photo_url ?? asset('storage/profiles/default-avatar.png') }}"
+                <img src="{{ $msg->sender->profile?->photo_url ?? 'https://ui-avatars.com/api/?background=1a1145&color=ff5e6c&bold=true&name=CC' }}"
                     class="w-6 h-6 rounded-full object-cover flex-shrink-0" alt="">
                 @endif
 
@@ -210,7 +210,7 @@ $otherProfile = $other->profile;
 
             {{-- Typing indicator --}}
             <div id="typing-indicator" class="hidden flex items-end gap-2 max-w-[82%]">
-                <img src="{{ $otherProfile?->photo_url ?? asset('storage/profiles/default-avatar.png') }}" class="w-6 h-6 rounded-full object-cover" alt="">
+                <img src="{{ $otherProfile?->photo_url ?? 'https://ui-avatars.com/api/?background=1a1145&color=ff5e6c&bold=true&name=CC' }}" class="w-6 h-6 rounded-full object-cover" alt="">
                 <div class="bubble-received px-4 py-3 flex items-center gap-1">
                     <span class="typing-dot w-1.5 h-1.5 bg-white/50 rounded-full"></span>
                     <span class="typing-dot w-1.5 h-1.5 bg-white/50 rounded-full"></span>
