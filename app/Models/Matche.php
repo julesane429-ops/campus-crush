@@ -43,7 +43,7 @@ class Matche extends Model
 
     public function lastMessage()
     {
-        return $this->hasOne(Message::class, 'match_id')->latest();
+        return $this->hasOne(Message::class, 'match_id')->latestOfMany();
     }
 
     // ── Scopes ──
@@ -55,7 +55,7 @@ class Matche extends Model
     {
         return $query->where(function ($q) use ($userId) {
             $q->where('user1_id', $userId)
-              ->orWhere('user2_id', $userId);
+                ->orWhere('user2_id', $userId);
         });
     }
 
