@@ -193,8 +193,8 @@ $otherProfile = $other->profile;
                         @if($msg->attachments && $msg->attachments->count())
                         <div class="flex flex-wrap gap-1.5 mt-2">
                             @foreach($msg->attachments as $file)
-                            <a href="{{ asset('storage/'.$file->file_path) }}" target="_blank">
-                                <img src="{{ asset('storage/'.$file->file_path) }}" class="w-20 h-20 object-cover rounded-xl" alt="">
+                            <a href="{{ $file->url }}" target="_blank">
+    <img src="{{ $file->url }}" class="w-20 h-20 object-cover rounded-xl" alt="">
                             </a>
                             @endforeach
                         </div>
