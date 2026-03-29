@@ -150,9 +150,7 @@
         }
 
         /* ═══ SAFE AREAS ═══ */
-        .safe-top {
-            padding-top: max(env(safe-area-inset-top, 0px), 0px);
-        }
+        .safe-top { padding-top: max(env(safe-area-inset-top, 12px), 12px); }
 
         .safe-bottom {
             padding-bottom: max(env(safe-area-inset-bottom, 0px), 4px);
@@ -177,7 +175,7 @@ $otherPhoto = $otherProfile?->photo_url ?? 'https://ui-avatars.com/api/?backgrou
         {{-- ═══════════════════════════════ --}}
         {{-- HEADER --}}
         {{-- ═══════════════════════════════ --}}
-        <header class="flex items-center gap-3 px-4 py-2.5 cc-surface border-b border-white/5 flex-shrink-0 safe-top">
+        <header class="flex items-center gap-3 px-4 pb-2.5 cc-surface border-b border-white/5 flex-shrink-0" style="padding-top: max(env(safe-area-inset-top, 12px), 12px);">
             {{-- Back --}}
             <a href="{{ route('matches') }}" class="p-2 -ml-1 rounded-xl hover:bg-white/5 active:scale-95 transition">
                 <svg class="w-5 h-5 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
@@ -266,7 +264,7 @@ $otherPhoto = $otherProfile?->photo_url ?? 'https://ui-avatars.com/api/?backgrou
                 <div class="{{ $isMe ? 'items-end' : 'items-start' }} flex flex-col">
                     <div class="{{ $isMe ? 'bubble-sent' : 'bubble-received' }} px-3.5 py-2.5 max-w-full">
                         @if($msg->message)
-                        <p class="text-[13px] leading-relaxed {{ $isMe ? 'text-white' : 'text-white/80' }} break-words">{{ e($msg->message) }}</p>
+                        <p class="text-[13px] leading-relaxed {{ $isMe ? 'text-white' : 'text-white/80' }} break-words">{!! nl2br(e($msg->message)) !!}</p>
                         @endif
                         @if($msg->attachments && $msg->attachments->count())
                         <div class="flex flex-wrap gap-1.5 {{ $msg->message ? 'mt-2' : '' }}">
@@ -465,11 +463,9 @@ $otherPhoto = $otherProfile?->photo_url ?? 'https://ui-avatars.com/api/?backgrou
         }
 
         function esc(text) {
-            if (!text) return '';
-            const d = document.createElement('div');
-            d.textContent = text;
-            return d.innerHTML;
-        }
+    if (!text) return '';
+    return text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
 
         // ═══════════════════════════════════════
         // FORM SUBMIT (instant preview)
