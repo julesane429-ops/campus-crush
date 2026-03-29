@@ -19,6 +19,9 @@ class Attachment extends Model
 
     public function getUrlAttribute(): string
     {
+        if (config('filesystems.default') === 's3') {
+            return config('filesystems.disks.s3.url') . '/' . $this->file_path;
+        }
         return asset('storage/' . $this->file_path);
     }
 }
