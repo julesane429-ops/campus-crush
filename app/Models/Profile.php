@@ -37,16 +37,22 @@ class Profile extends Model
     }
 
     public function getPhotoUrlAttribute(): string
-    {
-        if ($this->photo) {
-            if (str_starts_with($this->photo, 'avatars/')) {
-                return asset('images/' . $this->photo);
-            }
-            return asset('storage/' . $this->photo);
+{
+    if ($this->photo) {
+        // Photos statiques dans public/images/avatars
+        if (str_starts_with($this->photo, 'avatars/')) {
+            return asset('images/' . $this->photo);
         }
-        $name = $this->user->name ?? 'CC';
-        return 'https://ui-avatars.com/api/?background=1a1145&color=ff5e6c&bold=true&name=' . urlencode(substr($name, 0, 2));
+        // Photos sur S3/Supabase Storage
+        if (config('filesystems.default') === 's3') {
+            return config('filesystems.disks.s3.url') . '/' . $this->photo;
+        }
+        // Photos en local (dev)
+        return asset('storage/' . $this->photo);
     }
+    $name = $this->user->name ?? 'CC';
+    return 'https://ui-avatars.com/api/?background=1a1145&color=ff5e6c&bold=true&name=' . urlencode(substr($name, 0, 2));
+}
 
     public function getUniversityNameAttribute(): string
     {
