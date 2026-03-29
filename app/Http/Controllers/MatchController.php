@@ -14,38 +14,37 @@ class MatchController extends Controller
 {
     $user = Auth::user();
 
-    $matches = Matche::with([
-            'user1.profile',
-            'user2.profile',
-            'messages' => fn($q) => $q->orderByDesc('created_at')->limit(1),
-        ])
+    $matches = Matche::with(['user1.profile', 'user2.profile'])
         ->notBlockedFor($user->id)
-        ->get()
-        ->sortByDesc(function ($match) {
-            return $match->messages->first()?->created_at;
-        })
-        ->map(function ($match) use ($user) {
-            $otherUser = $match->getOtherUser($user->id);
-            $lastMsg = $match->messages->first();
+        ->get();
 
-            $unreadCount = $match->messages()
-                ->whereNull('read_at')
-                ->where('sender_id', '!=', $user->id)
-                ->count();
+    // Charger le dernier message pour chaque match manuellement
+    $matchData = $matches->map(function ($match) use ($user) {
+        $otherUser = $match->getOtherUser($user->id);
 
-            return [
-                'match_id'     => $match->id,
-                'id'           => $otherUser->id,
-                'name'         => $otherUser->name,
-                'photo'        => $otherUser->profile?->photo_url
-                    ?? 'https://ui-avatars.com/api/?background=1a1145&color=ff5e6c&bold=true&name=' . urlencode(substr($otherUser->name, 0, 2)),
-                'last_message' => $lastMsg?->message ?: ($lastMsg ? '📷 Photo' : null),
-                'last_time'    => $lastMsg?->created_at?->diffForHumans(),
-                'unread'       => $unreadCount,
-            ];
-        });
+        $lastMsg = \App\Models\Message::where('match_id', $match->id)
+            ->orderByDesc('created_at')
+            ->first();
 
-    return view('matches.index', compact('matches'));
+        $unreadCount = \App\Models\Message::where('match_id', $match->id)
+            ->whereNull('read_at')
+            ->where('sender_id', '!=', $user->id)
+            ->count();
+
+        return [
+            'match_id'     => $match->id,
+            'id'           => $otherUser->id,
+            'name'         => $otherUser->name,
+            'photo'        => $otherUser->profile?->photo_url
+                ?? 'https://ui-avatars.com/api/?background=1a1145&color=ff5e6c&bold=true&name=' . urlencode(substr($otherUser->name, 0, 2)),
+            'last_message' => $lastMsg?->message ?: ($lastMsg ? '📷 Photo' : null),
+            'last_time'    => $lastMsg?->created_at?->diffForHumans(),
+            'unread'       => $unreadCount,
+            'sort_date'    => $lastMsg?->created_at ?? $match->created_at,
+        ];
+    })->sortByDesc('sort_date')->values();
+
+    return view('matches.index', ['matches' => $matchData]);
 }
 
     /**
