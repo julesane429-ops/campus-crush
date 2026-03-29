@@ -339,36 +339,55 @@ $otherProfile = $other->profile;
     }
 
     // FORM SUBMIT (AJAX)
-    document.getElementById('msg-form').addEventListener('submit', function(e) {
-        e.preventDefault();
-        const input = document.getElementById('msg-input');
-        const text = input.value.trim();
-        const attachInput = document.getElementById('attach-input');
-        if (!text && attachInput.files.length === 0) return;
+document.getElementById('msg-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const input = document.getElementById('msg-input');
+    const text = input.value.trim();
+    const attachInput = document.getElementById('attach-input');
+    if (!text && attachInput.files.length === 0) return;
 
-        if (text) {
-            const div = document.createElement('div');
-            div.className = 'flex items-end gap-2 max-w-[82%] ml-auto flex-row-reverse msg-in';
-            const now = new Date();
-            const time = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
-            div.innerHTML = '<div><div class="bubble-sent px-4 py-2.5"><p class="text-[13px] leading-relaxed text-white">' + escapeHtml(text) + '</p></div><span class="text-[10px] text-white/20 mt-1 block text-right" style="font-family:monospace">' + time + '</span></div>';
-            chatArea.insertBefore(div, typingEl);
-            chatArea.scrollTop = chatArea.scrollHeight;
-        }
+    const now = new Date();
+    const time = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
 
-        const fd = new FormData(this);
-        input.value = '';
-        document.getElementById('attach-preview').classList.add('hidden');
-        document.getElementById('attach-preview').innerHTML = '';
+    // Build optimistic message with text + images
+    let contentHtml = '';
+    if (text) {
+        contentHtml += '<p class="text-[13px] leading-relaxed text-white">' + escapeHtml(text) + '</p>';
+    }
 
-        fetch(this.action, {
-            method: 'POST', body: fd,
-            headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
-            credentials: 'same-origin'
-        }).catch(err => console.error('Send error:', err));
+    // Preview attachments immediately
+    const files = Array.from(attachInput.files);
+    if (files.length > 0) {
+        let imgHtml = '<div class="flex flex-wrap gap-1.5 mt-2">';
+        files.forEach(f => {
+            const url = URL.createObjectURL(f);
+            imgHtml += '<img src="' + url + '" class="w-20 h-20 object-cover rounded-xl" alt="">';
+        });
+        imgHtml += '</div>';
+        contentHtml += imgHtml;
+    }
 
-        attachInput.value = '';
-    });
+    if (contentHtml) {
+        const div = document.createElement('div');
+        div.className = 'flex items-end gap-2 max-w-[82%] ml-auto flex-row-reverse msg-in';
+        div.innerHTML = '<div><div class="bubble-sent px-4 py-2.5">' + contentHtml + '</div><span class="text-[10px] text-white/20 mt-1 block text-right" style="font-family:monospace">' + time + '</span></div>';
+        chatArea.insertBefore(div, typingEl);
+        chatArea.scrollTop = chatArea.scrollHeight;
+    }
+
+    const fd = new FormData(this);
+    input.value = '';
+    document.getElementById('attach-preview').classList.add('hidden');
+    document.getElementById('attach-preview').innerHTML = '';
+
+    fetch(this.action, {
+        method: 'POST', body: fd,
+        headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+        credentials: 'same-origin'
+    }).catch(err => console.error('Send error:', err));
+
+    attachInput.value = '';
+});
 
     // SCROLL, MENU, ATTACHMENTS, EMOJIS
     chatArea.scrollTop = chatArea.scrollHeight;

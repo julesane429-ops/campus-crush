@@ -136,10 +136,10 @@
                     <svg class="w-5 h-5 text-white/50" fill="currentColor" viewBox="0 0 24 24">
                         <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
                     </svg>
-                    <?php $mc = $matchesCount ?? 0; ?>
-                    <?php if($mc > 0): ?>
-                    <span id="match-count" class="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] bg-[#ff5e6c] text-[10px] font-bold rounded-full flex items-center justify-center px-1"><?php echo $mc; ?></span>
-                    <?php endif; ?>
+                    <?php $unread = $messagesCount ?? 0; ?>
+<?php if($unread > 0): ?>
+<span id="unread-badge" class="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] bg-[#ff5e6c] text-[10px] font-bold rounded-full flex items-center justify-center px-1"><?php echo $unread; ?></span>
+<?php endif; ?>
                 </a>
             </div>
         </header>
@@ -546,8 +546,8 @@
         try {
             const res = await fetch('/nav-counts');
             const data = await res.json();
-            const mc = document.getElementById('match-count');
-            if (mc) { if (data.matches > 0) { mc.textContent = data.matches; mc.classList.remove('hidden'); } else { mc.classList.add('hidden'); } }
+            const ub = document.getElementById('unread-badge');
+if (ub) { if (data.messages > 0) { ub.textContent = data.messages; ub.classList.remove('hidden'); } else { ub.classList.add('hidden'); } }
         } catch(e) {}
     }
     setInterval(refreshNavCounts, 8000);

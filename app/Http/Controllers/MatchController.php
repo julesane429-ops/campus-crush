@@ -36,7 +36,7 @@ class MatchController extends Controller
                     'id'           => $otherUser->id,
                     'name'         => $otherUser->name,
                     'photo'        => $otherUser->profile?->photo_url
-                        ?? asset('storage/profiles/default-avatar.png'),
+    ?? 'https://ui-avatars.com/api/?background=1a1145&color=ff5e6c&bold=true&name=' . urlencode(substr($otherUser->name, 0, 2)),
                     'last_message' => $match->lastMessage?->message,
                     'last_time'    => $match->lastMessage?->created_at?->diffForHumans(),
                     'unread'       => $unreadCount,
