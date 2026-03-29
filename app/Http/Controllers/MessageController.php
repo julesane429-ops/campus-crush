@@ -41,11 +41,10 @@ class MessageController extends Controller
             ->update(['read_at' => now()]);
 
         // Marquer les notifications de messages de ce match comme lues
-        $user->unreadNotifications()
-            ->where('data->type', 'new_message')
-            ->where('data->match_id', $matchId)
-            ->get()
-            ->each->markAsRead();
+        $user->unreadNotifications->filter(function ($notif) use ($matchId) {
+            $data = is_array($notif->data) ? $notif->data : json_decode($notif->data, true);
+            return ($data['type'] ?? '') === 'new_message' && ($data['match_id'] ?? 0) == $matchId;
+        })->each->markAsRead();
 
         return view('messages.chat', [
             'match' => $match,
@@ -100,10 +99,12 @@ class MessageController extends Controller
         $otherUser->notify(new NewMessageNotification($message));
 
         // Après le message :
-app(WebPushService::class)->notifyNewMessage(
-    $otherUser, Auth::user()->name,
-    Str::limit($message->message, 50), $match->id
-);
+        app(WebPushService::class)->notifyNewMessage(
+            $otherUser,
+            Auth::user()->name,
+            Str::limit($message->message, 50),
+            $match->id
+        );
 
         // Broadcast notification sur le canal privé
         broadcast(new \App\Events\NewMatch($match, $user))->toOthers();
