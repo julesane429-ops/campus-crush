@@ -82,6 +82,9 @@ Route::middleware(['auth', 'subscription'])->group(function () {
     Route::post('/messages/{match}/report', [MessageController::class, 'report'])->name('messages.report');
     Route::delete('/messages/{match}/delete', [MessageController::class, 'delete'])->name('messages.delete');
     Route::post('/typing/{match}', [MessageController::class, 'typing'])->where('match', '[0-9]+');
+
+    // Qui t'a liké
+    Route::get('/likes', [App\Http\Controllers\LikeController::class, 'whoLikedMe'])->name('likes.index');
 });
 
 // ── Panel Admin ──
