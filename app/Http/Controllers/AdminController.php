@@ -31,6 +31,10 @@ class AdminController extends Controller
             'total_revenue' => Payment::where('status', 'completed')->sum('amount'),
             'revenue_month' => Payment::where('status', 'completed')
                 ->where('created_at', '>=', now()->startOfMonth())->sum('amount'),
+            'men_count' => User::whereHas('profile', fn($q) => $q->where('gender', 'homme'))->count(),
+'women_count' => User::whereHas('profile', fn($q) => $q->where('gender', 'femme'))->count(),
+'men_online' => User::whereHas('profile', fn($q) => $q->where('gender', 'homme')->where('last_seen_at', '>=', now()->subMinutes(2)))->count(),
+'women_online' => User::whereHas('profile', fn($q) => $q->where('gender', 'femme')->where('last_seen_at', '>=', now()->subMinutes(2)))->count(),
         ];
 
         $recentUsers = User::with('profile', 'subscription')

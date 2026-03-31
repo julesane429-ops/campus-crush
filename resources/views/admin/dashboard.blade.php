@@ -15,6 +15,10 @@
             ['label' => 'Bannis', 'value' => $stats['banned_users'], 'icon' => '🚫', 'color' => 'ef4444'],
             ['label' => 'Abonnés actifs', 'value' => $stats['active_subscriptions'], 'icon' => '✨', 'color' => 'ffc145'],
             ['label' => 'Revenus/mois', 'value' => number_format($stats['revenue_month']) . ' F', 'icon' => '💰', 'color' => '22c55e'],
+            ['label' => 'Hommes', 'value' => $stats['men_count'], 'icon' => '♂️', 'color' => '3b82f6'],
+['label' => 'Femmes', 'value' => $stats['women_count'], 'icon' => '♀️', 'color' => 'ec4899'],
+['label' => 'Hommes en ligne', 'value' => $stats['men_online'], 'icon' => '🟢♂️', 'color' => '22c55e'],
+['label' => 'Femmes en ligne', 'value' => $stats['women_online'], 'icon' => '🟢♀️', 'color' => '22c55e'],
         ];
     @endphp
 

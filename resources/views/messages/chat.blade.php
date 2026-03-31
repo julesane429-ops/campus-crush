@@ -59,7 +59,7 @@
         </div>
 
         <div class="flex-1 min-w-0">
-            <h1 class="font-semibold text-sm truncate leading-tight">{{ e($other->name) }}</h1>
+            <h1 class="font-semibold text-sm truncate leading-tight cursor-pointer hover:text-[#ff5e6c] transition" onclick="document.getElementById('profile-modal').classList.remove('hidden')">{{ e($other->name) }}</h1>
             <p id="online-status" class="text-[11px] text-white/35 flex items-center gap-1.5 mt-0.5">
                 <span id="status-dot" class="w-1.5 h-1.5 rounded-full bg-white/15 flex-shrink-0"></span>
                 <span id="status-text">Hors ligne</span>
@@ -183,6 +183,40 @@
             </div>
         </form>
     </footer>
+</div>
+
+{{-- PROFILE CARD MODAL --}}
+<div id="profile-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-6" style="background:rgba(12,10,26,0.92); backdrop-filter:blur(20px);" onclick="if(event.target===this) this.classList.add('hidden')">
+    <div class="w-full max-w-[300px] rounded-[24px] overflow-hidden relative" style="aspect-ratio: 3/4.2; box-shadow: 0 20px 60px rgba(0,0,0,0.5);">
+        <img src="{{ $otherPhoto }}" class="absolute inset-0 w-full h-full object-cover" alt="">
+        <div class="absolute inset-0" style="background: linear-gradient(0deg, rgba(12,10,26,0.9) 0%, rgba(12,10,26,0.3) 35%, transparent 70%);"></div>
+        <div class="absolute bottom-0 left-0 right-0 p-5">
+            <div class="flex items-baseline gap-2 mb-1.5">
+                <h2 class="text-2xl font-bold text-white">{{ e($other->name) }}</h2>
+                <span class="text-lg text-white/50">{{ $otherProfile?->age }}</span>
+            </div>
+            <div class="flex items-center gap-1.5 mb-2">
+                <svg class="w-3.5 h-3.5 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+                <span class="text-xs text-white/50">{{ $otherProfile?->ufr }} · {{ $otherProfile?->level }}</span>
+            </div>
+            @if($otherProfile?->university_name ?? $otherProfile?->university)
+            <p class="text-[10px] text-white/30 mb-2">🎓 {{ $otherProfile->university_name ?? $otherProfile->university }}</p>
+            @endif
+            @if($otherProfile?->bio)
+            <p class="text-xs text-white/50 leading-relaxed line-clamp-3 mb-3">{{ e($otherProfile->bio) }}</p>
+            @endif
+            @if($otherProfile?->interests)
+            <div class="flex flex-wrap gap-1.5">
+                @foreach(explode(',', $otherProfile->interests) as $tag)
+                <span class="px-2 py-0.5 bg-white/10 rounded-full text-[10px] text-white/60">{{ trim($tag) }}</span>
+                @endforeach
+            </div>
+            @endif
+        </div>
+        <button onclick="document.getElementById('profile-modal').classList.add('hidden')" class="absolute top-3 right-3 w-8 h-8 rounded-full bg-black/40 flex items-center justify-center text-white/60 hover:text-white transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+    </div>
 </div>
 
 {{-- PUSHER + ECHO (only if pusher is configured) --}}
