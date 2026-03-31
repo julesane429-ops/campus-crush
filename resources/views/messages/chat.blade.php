@@ -349,6 +349,25 @@ emojis.forEach(em => { const b = document.createElement('button'); b.type='butto
 document.getElementById('emoji-toggle').onclick = (e) => { e.stopPropagation(); document.getElementById('emoji-picker').classList.toggle('hidden'); };
 document.addEventListener('click', (e) => { const ep = document.getElementById('emoji-picker'); if (!ep.contains(e.target)) ep.classList.add('hidden'); });
 
+// ═══════════════════════════════════════
+// POLL ONLINE STATUS
+// ═══════════════════════════════════════
+const otherUserId = <?php echo json_encode($other->id); ?>;
+
+async function pollOnlineStatus() {
+    try {
+        const res = await fetch('/user/' + otherUserId + '/status');
+        const data = await res.json();
+        setOnlineStatus(data.online);
+        if (!data.online && data.last_seen) {
+            statusText.textContent = data.last_seen;
+        }
+    } catch(e) {}
+}
+
+pollOnlineStatus();
+setInterval(pollOnlineStatus, 10000);
+
 if (window.visualViewport) { window.visualViewport.addEventListener('resize', () => { setTimeout(() => chatArea.scrollTop = chatArea.scrollHeight, 100); }); }
 </script>
 </body>
