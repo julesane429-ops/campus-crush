@@ -59,6 +59,17 @@ Route::middleware('auth')->group(function () {
 
     Route::post('/push/subscribe', [App\Http\Controllers\PushController::class, 'subscribe']);
 Route::post('/push/unsubscribe', [App\Http\Controllers\PushController::class, 'unsubscribe']);
+
+Route::get('/user/{id}/status', function (int $id) {
+    $user = \App\Models\User::with('profile')->find($id);
+    if (!$user || !$user->profile) return response()->json(['online' => false]);
+    $lastSeen = $user->profile->last_seen_at;
+    $online = $lastSeen && now()->diffInMinutes($lastSeen) < 2;
+    return response()->json([
+        'online' => $online,
+        'last_seen' => $lastSeen?->diffForHumans(),
+    ]);
+})->name('user.status');
 });
 
 // ── Routes avec abonnement requis ──
