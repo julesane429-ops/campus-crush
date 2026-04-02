@@ -130,7 +130,7 @@
             <div class="rounded-3xl p-10 md:p-14 text-center relative overflow-hidden" style="background: linear-gradient(135deg, rgba(255,94,108,0.15), rgba(168,85,247,0.1)); border: 1px solid rgba(255,94,108,0.15);">
                 <div class="absolute top-0 right-0 w-40 h-40 bg-[#ff5e6c] rounded-full blur-[80px] opacity-20"></div>
                 <h2 class="text-3xl font-bold mb-3 relative z-10">Prêt(e) ? 💘</h2>
-                <p class="text-white/40 mb-8 relative z-10">Rejoins des centaines d'étudiants de l'UGB</p>
+                <p class="text-white/40 mb-8 relative z-10">Rejoins des centaines d'étudiants du Sénégal</p>
                 <a href="{{ route('register') }}" class="cc-btn cc-btn-primary text-lg relative z-10">Créer mon compte</a>
             </div>
         </div>
@@ -142,7 +142,7 @@
             <div class="flex items-center gap-2">
                 <span class="text-sm font-bold cc-gradient-text">Campus Crush</span>
             </div>
-            <p class="text-xs text-white/20">© 2026 · Fait avec ❤️ pour l'UGB Saint-Louis, Sénégal</p>
+            <p class="text-xs text-white/20">© 2026 · Fait avec ❤️ pour les étudiants du Sénégal</p>
         </div>
     </footer>
 </div>
