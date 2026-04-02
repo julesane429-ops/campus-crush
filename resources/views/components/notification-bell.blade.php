@@ -8,8 +8,8 @@
         <span id="notif-badge" class="hidden absolute -top-0.5 -right-0.5 w-5 h-5 bg-gradient-to-r from-[#ff5e6c] to-[#ff8a5c] text-[10px] font-bold rounded-full flex items-center justify-center shadow-lg shadow-[#ff5e6c]/30">0</span>
     </button>
 
-    <div id="notif-dropdown" class="hidden absolute right-0 mt-2 w-80 max-h-96 overflow-y-auto rounded-2xl z-50"
-         style="background: rgba(26,17,69,0.97); border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(40px); box-shadow: 0 20px 60px rgba(0,0,0,0.5);">
+    <div id="notif-dropdown" class="hidden fixed w-80 max-h-96 overflow-y-auto rounded-2xl"
+         style="top: 56px; right: 12px; z-index: 9999; background: rgba(26,17,69,0.97); border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(40px); box-shadow: 0 20px 60px rgba(0,0,0,0.5);">
 
         <div class="flex items-center justify-between px-4 py-3 border-b border-white/5 sticky top-0"
              style="background: rgba(26,17,69,0.97); z-index: 1;">
