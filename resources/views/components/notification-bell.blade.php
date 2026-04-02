@@ -64,9 +64,13 @@
 
         if (isMarkingAll || unreadCount === 0) return;
 
-        isMarkingAll            = true;
-        markAllBtn.disabled     = true;
-        markAllBtn.textContent  = 'Marquage…';
+        isMarkingAll = true;
+
+        // ① Mise à jour optimiste IMMÉDIATE — badge à 0 avant même l'appel API
+        unreadCount = 0;
+        updateBadge(0);
+        markAllBtn.classList.add('hidden');
+        list.innerHTML = '<div class="px-4 py-8 text-center text-white/25 text-sm">Aucune notification</div>';
 
         try {
             const res = await fetch('/notifications/read-all', {
@@ -80,13 +84,11 @@
             });
 
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-            const data = await res.json();
-            syncNotificationsUI(data);          // vide la liste + cache le bouton
+            // La réponse confirme ; on laisse l'UI telle quelle (déjà à 0)
         } catch (err) {
             console.error('Mark-all error:', err);
-            markAllBtn.disabled    = false;
-            markAllBtn.textContent = 'Tout marquer comme lu';
+            // En cas d'échec : recharger l'état réel depuis le serveur
+            loadNotifications();
         } finally {
             isMarkingAll = false;
         }
@@ -185,6 +187,7 @@
 
     // ── Rafraîchissement du badge (polling léger) ─────────────────
     async function refreshBadge() {
+        if (isMarkingAll) return; // ne pas écraser pendant un marquage en cours
         try {
             const res  = await fetch('/nav-counts', { headers: { 'Accept': 'application/json' } });
             if (!res.ok) return;
