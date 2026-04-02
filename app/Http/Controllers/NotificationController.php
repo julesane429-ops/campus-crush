@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Notifications\DatabaseNotification;
 
 class NotificationController extends Controller
 {
@@ -21,7 +22,11 @@ class NotificationController extends Controller
     {
         $user = Auth::user();
 
-        $user->unreadNotifications()->update([
+        DatabaseNotification::query()
+            ->where('notifiable_type', $user->getMorphClass())
+            ->where('notifiable_id', $user->getKey())
+            ->whereNull('read_at')
+            ->update([
             'read_at' => now(),
         ]);
 

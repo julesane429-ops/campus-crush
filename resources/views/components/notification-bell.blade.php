@@ -5,7 +5,7 @@
 --}}
 
 <div class="relative" id="notif-wrapper">
-    <button onclick="toggleNotifications()" class="relative p-2 rounded-xl hover:bg-white/5 transition">
+    <button type="button" onclick="toggleNotifications()" class="relative p-2 rounded-xl hover:bg-white/5 transition">
         <svg class="w-6 h-6 text-white/50 hover:text-white transition" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
             <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"/>
         </svg>
@@ -18,8 +18,8 @@
         <div class="flex items-center justify-between px-4 py-3 border-b border-white/5">
             <h3 class="font-semibold text-sm">Notifications</h3>
             <button
+                type="button"
                 id="notif-mark-all"
-                onclick="markAllNotificationsRead()"
                 class="text-[11px] text-[#ff5e6c] hover:text-[#ff8a5c] transition font-medium disabled:opacity-40 disabled:cursor-not-allowed"
             >
                 Tout marquer comme lu
@@ -42,6 +42,8 @@
     const markAllButton = document.getElementById('notif-mark-all');
     const wrapper = document.getElementById('notif-wrapper');
     const csrf = document.querySelector('meta[name="csrf-token"]')?.content;
+    let isMarkingAll = false;
+    let unreadNotificationCount = 0;
 
     window.toggleNotifications = function() {
         dropdown.classList.toggle('hidden');
@@ -55,6 +57,12 @@
         if (!wrapper.contains(e.target)) {
             dropdown.classList.add('hidden');
         }
+    });
+
+    markAllButton.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        window.markAllNotificationsRead();
     });
 
     async function loadNotifications() {
@@ -76,10 +84,11 @@
 
     function syncNotificationsUI(data) {
         const notifications = data.notifications || [];
+        unreadNotificationCount = notifications.length;
 
         updateBadge(data.unread_count || 0);
         markAllButton.classList.toggle('hidden', notifications.length === 0);
-        markAllButton.disabled = notifications.length === 0;
+        markAllButton.disabled = isMarkingAll || notifications.length === 0;
 
         if (notifications.length === 0) {
             list.innerHTML = '<div class="px-4 py-8 text-center text-white/25 text-sm">Aucune notification</div>';
@@ -135,13 +144,23 @@
     };
 
     window.markAllNotificationsRead = async function() {
+        if (isMarkingAll || unreadNotificationCount === 0) {
+            return;
+        }
+
         try {
+            isMarkingAll = true;
+            markAllButton.disabled = true;
+            markAllButton.textContent = 'Marquage...';
+
             const res = await fetch('/notifications/read-all', {
                 method: 'POST',
                 headers: {
+                    'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': csrf,
                     'Accept': 'application/json'
-                }
+                },
+                body: JSON.stringify({})
             });
 
             if (!res.ok) {
@@ -152,6 +171,10 @@
             syncNotificationsUI(data);
         } catch (e) {
             console.error('Mark all notifications error:', e);
+        } finally {
+            isMarkingAll = false;
+            markAllButton.textContent = 'Tout marquer comme lu';
+            markAllButton.disabled = unreadNotificationCount === 0;
         }
     };
 
