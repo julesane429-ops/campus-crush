@@ -2,53 +2,69 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class NotificationController extends Controller
 {
     /**
-     * Récupérer les notifications (JSON pour AJAX).
+     * Return only notifications that still need attention.
      */
     public function index()
     {
-        $notifications = Auth::user()
-            ->notifications()
-            ->take(20)
-            ->get()
-            ->map(fn($n) => [
-                'id' => $n->id,
-                'data' => $n->data,
-                'read' => $n->read_at !== null,
-                'time' => $n->created_at->diffForHumans(),
-            ]);
+        return response()->json($this->buildResponsePayload(Auth::user()));
+    }
 
-        $unreadCount = Auth::user()->unreadNotifications()->count();
+    /**
+     * Mark every unread notification as read.
+     */
+    public function markAllRead()
+    {
+        $user = Auth::user();
+
+        $user->unreadNotifications()->update([
+            'read_at' => now(),
+        ]);
 
         return response()->json([
-            'notifications' => $notifications,
-            'unread_count' => $unreadCount,
+            'success' => true,
+            ...$this->buildResponsePayload($user),
         ]);
     }
 
     /**
-     * Marquer toutes les notifications comme lues.
-     */
-    public function markAllRead()
-    {
-        Auth::user()->unreadNotifications->markAsRead();
-
-        return response()->json(['success' => true]);
-    }
-
-    /**
-     * Marquer une notification comme lue.
+     * Mark a single notification as read.
      */
     public function markRead(string $id)
     {
-        $notification = Auth::user()->notifications()->findOrFail($id);
-        $notification->markAsRead();
+        $user = Auth::user();
+        $notification = $user->notifications()->findOrFail($id);
 
-        return response()->json(['success' => true]);
+        if ($notification->read_at === null) {
+            $notification->markAsRead();
+        }
+
+        return response()->json([
+            'success' => true,
+            'unread_count' => $user->unreadNotifications()->count(),
+        ]);
+    }
+
+    private function buildResponsePayload($user): array
+    {
+        $notifications = $user->unreadNotifications()
+            ->take(20)
+            ->get()
+            ->map(fn($notification) => [
+                'id' => $notification->id,
+                'data' => $notification->data,
+                'read' => false,
+                'time' => $notification->created_at->diffForHumans(),
+            ])
+            ->values();
+
+        return [
+            'notifications' => $notifications,
+            'unread_count' => $user->unreadNotifications()->count(),
+        ];
     }
 }

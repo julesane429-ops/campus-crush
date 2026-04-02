@@ -1,4 +1,4 @@
-{{-- 
+{{--
     Notification Bell Component
     Include in any page header: @include('components.notification-bell')
     Requires Echo/Pusher to be loaded for real-time.
@@ -14,13 +14,15 @@
         </span>
     </button>
 
-    {{-- Dropdown --}}
     <div id="notif-dropdown" class="hidden absolute right-0 mt-2 w-80 max-h-96 overflow-y-auto rounded-2xl z-50" style="background: rgba(26,17,69,0.97); border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(40px); box-shadow: 0 20px 60px rgba(0,0,0,0.5);">
-        
         <div class="flex items-center justify-between px-4 py-3 border-b border-white/5">
             <h3 class="font-semibold text-sm">Notifications</h3>
-            <button onclick="markAllNotificationsRead()" class="text-[11px] text-[#ff5e6c] hover:text-[#ff8a5c] transition font-medium">
-                Tout marquer lu
+            <button
+                id="notif-mark-all"
+                onclick="markAllNotificationsRead()"
+                class="text-[11px] text-[#ff5e6c] hover:text-[#ff8a5c] transition font-medium disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+                Tout marquer comme lu
             </button>
         </div>
 
@@ -37,117 +39,153 @@
     const badge = document.getElementById('notif-badge');
     const dropdown = document.getElementById('notif-dropdown');
     const list = document.getElementById('notif-list');
+    const markAllButton = document.getElementById('notif-mark-all');
+    const wrapper = document.getElementById('notif-wrapper');
     const csrf = document.querySelector('meta[name="csrf-token"]')?.content;
 
-    // Toggle dropdown
     window.toggleNotifications = function() {
         dropdown.classList.toggle('hidden');
+
         if (!dropdown.classList.contains('hidden')) {
             loadNotifications();
         }
     };
 
-    // Close on outside click
     document.addEventListener('click', function(e) {
-        if (!document.getElementById('notif-wrapper').contains(e.target)) {
+        if (!wrapper.contains(e.target)) {
             dropdown.classList.add('hidden');
         }
     });
 
-    // Load notifications
     async function loadNotifications() {
         try {
-            const res = await fetch('/notifications', { headers: { 'Accept': 'application/json' } });
-            const data = await res.json();
+            const res = await fetch('/notifications', {
+                headers: { 'Accept': 'application/json' }
+            });
 
-            updateBadge(data.unread_count);
-
-            if (data.notifications.length === 0) {
-                list.innerHTML = '<div class="px-4 py-8 text-center text-white/25 text-sm">Aucune notification</div>';
-                return;
+            if (!res.ok) {
+                throw new Error(`HTTP ${res.status}`);
             }
 
-            list.innerHTML = data.notifications.map(n => {
-                const d = n.data;
-                const icon = d.type === 'new_match' ? '💕' : '💬';
-                const href = d.type === 'new_match' 
-                    ? `/messages/${d.match_id}` 
-                    : `/messages/${d.match_id}`;
-                const unreadClass = n.read ? '' : 'bg-white/[0.03]';
-
-                return `
-                    <a href="${href}" onclick="markNotifRead('${n.id}')" 
-                       class="flex items-center gap-3 px-4 py-3 hover:bg-white/5 transition ${unreadClass}">
-                        <div class="flex-shrink-0">
-                            ${d.user_photo || d.sender_photo 
-                                ? `<img src="${d.user_photo || d.sender_photo}" class="w-10 h-10 rounded-full object-cover" alt="">`
-                                : `<div class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-lg">${icon}</div>`
-                            }
-                        </div>
-                        <div class="flex-1 min-w-0">
-                            <p class="text-xs text-white/70 truncate">${escapeH(d.message || '')}</p>
-                            <p class="text-[10px] text-white/25 mt-0.5">${n.time}</p>
-                        </div>
-                        ${!n.read ? '<span class="w-2 h-2 bg-[#ff5e6c] rounded-full flex-shrink-0"></span>' : ''}
-                    </a>
-                `;
-            }).join('');
-        } catch(e) {
+            const data = await res.json();
+            syncNotificationsUI(data);
+        } catch (e) {
             console.error('Notifications error:', e);
         }
+    }
+
+    function syncNotificationsUI(data) {
+        const notifications = data.notifications || [];
+
+        updateBadge(data.unread_count || 0);
+        markAllButton.classList.toggle('hidden', notifications.length === 0);
+        markAllButton.disabled = notifications.length === 0;
+
+        if (notifications.length === 0) {
+            list.innerHTML = '<div class="px-4 py-8 text-center text-white/25 text-sm">Aucune notification</div>';
+            return;
+        }
+
+        list.innerHTML = notifications.map((notification) => {
+            const details = notification.data || {};
+            const icon = details.type === 'new_match' ? '&#128149;' : '&#128172;';
+            const href = details.match_id ? `/messages/${details.match_id}` : '#';
+            const avatar = details.user_photo || details.sender_photo;
+
+            return `
+                <a href="${href}" onclick="markNotifRead('${notification.id}')"
+                   class="flex items-center gap-3 px-4 py-3 hover:bg-white/5 transition bg-white/[0.03]">
+                    <div class="flex-shrink-0">
+                        ${avatar
+                            ? `<img src="${avatar}" class="w-10 h-10 rounded-full object-cover" alt="">`
+                            : `<div class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-lg">${icon}</div>`
+                        }
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-xs text-white/70 truncate">${escapeH(details.message || '')}</p>
+                        <p class="text-[10px] text-white/25 mt-0.5">${notification.time}</p>
+                    </div>
+                    <span class="w-2 h-2 bg-[#ff5e6c] rounded-full flex-shrink-0"></span>
+                </a>
+            `;
+        }).join('');
     }
 
     function updateBadge(count) {
         if (count > 0) {
             badge.textContent = count > 99 ? '99+' : count;
             badge.classList.remove('hidden');
-        } else {
-            badge.classList.add('hidden');
+            return;
         }
+
+        badge.classList.add('hidden');
     }
 
     window.markNotifRead = async function(id) {
         try {
             await fetch(`/notifications/${id}/read`, {
                 method: 'POST',
-                headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' }
+                keepalive: true,
+                headers: {
+                    'X-CSRF-TOKEN': csrf,
+                    'Accept': 'application/json'
+                }
             });
-        } catch(e) {}
+        } catch (e) {}
     };
 
     window.markAllNotificationsRead = async function() {
         try {
-            await fetch('/notifications/read-all', {
+            const res = await fetch('/notifications/read-all', {
                 method: 'POST',
-                headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' }
+                headers: {
+                    'X-CSRF-TOKEN': csrf,
+                    'Accept': 'application/json'
+                }
             });
-            badge.classList.add('hidden');
-            // Refresh list
-            loadNotifications();
-        } catch(e) {}
+
+            if (!res.ok) {
+                throw new Error(`HTTP ${res.status}`);
+            }
+
+            const data = await res.json();
+            syncNotificationsUI(data);
+        } catch (e) {
+            console.error('Mark all notifications error:', e);
+        }
     };
 
-    function escapeH(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
+    function escapeH(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
 
-    // Auto-refresh badge every 30s
     async function refreshBadge() {
         try {
-            const res = await fetch('/nav-counts', { headers: { 'Accept': 'application/json' } });
+            const res = await fetch('/nav-counts', {
+                headers: { 'Accept': 'application/json' }
+            });
+
+            if (!res.ok) {
+                return;
+            }
+
             const data = await res.json();
             updateBadge(data.notifications || 0);
-        } catch(e) {}
+        } catch (e) {}
     }
-    setInterval(refreshBadge, 30000);
-    refreshBadge(); // initial
 
-    // Listen for real-time notifications via Echo (if available)
+    setInterval(refreshBadge, 30000);
+    refreshBadge();
+
     if (window.Echo) {
         const userId = document.querySelector('meta[name="user-id"]')?.content;
+
         if (userId) {
             Echo.private(`user.${userId}`)
                 .listen('.NewMatch', (data) => {
                     refreshBadge();
-                    // Show a toast
                     showNotifToast(`💕 Match avec ${data.otherUserName} !`);
                 });
         }
