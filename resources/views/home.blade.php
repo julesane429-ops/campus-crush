@@ -71,7 +71,7 @@
         <div class="max-w-4xl mx-auto text-center">
             <div class="inline-flex mb-6 fade-up">
                 <span class="cc-mono text-[11px] uppercase tracking-[3px] text-white/30 px-4 py-2 rounded-full border border-white/10 bg-white/[0.02]">
-                    🇸🇳 Fait pour l'UGB
+                    🇸🇳 Fait pour les étudiants
                 </span>
             </div>
 
