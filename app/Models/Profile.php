@@ -7,10 +7,11 @@ use Illuminate\Database\Eloquent\Model;
 class Profile extends Model
 {
     protected $fillable = [
-        'user_id', 'age', 'gender', 'ufr', 'promotion',
-        'field_of_study', 'level', 'bio', 'interests',
-        'photo', 'university', 'university_id', 'last_seen_at',
-    ];
+    'user_id', 'age', 'gender', 'ufr', 'promotion',
+    'field_of_study', 'level', 'bio', 'interests',
+    'photo', 'university', 'university_id', 'last_seen_at',
+    'badge', 
+];
 
     protected function casts(): array
     {

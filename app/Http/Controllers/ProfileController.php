@@ -67,7 +67,7 @@ $photoPath = $request->file('photo')->store('profiles', $disk);
             $universityName = $uni ? $uni->short_name : 'UGB';
         }
 
-        Profile::create([
+         $profile = Profile::create([
             'user_id'        => $user->id,
             'age'            => $validated['age'],
             'gender'         => $validated['gender'],
@@ -81,6 +81,35 @@ $photoPath = $request->file('photo')->store('profiles', $disk);
             'university'     => $universityName,
             'university_id'  => $universityId,
         ]);
+ 
+        // 👑🏆 Attribution automatique des badges Campus Queen / King
+        // On exclut les profils seedés (photo avatars/F* ou avatars/H*)
+        // pour ne compter que les vraies inscriptions
+        $queenLimit = 100;
+        $kingLimit  = 50;
+ 
+        if ($profile->gender === 'femme') {
+            $realFemales = \App\Models\Profile::where('gender', 'femme')
+                ->where(function ($q) {
+                    $q->whereNull('photo')
+                      ->orWhere('photo', 'NOT LIKE', 'avatars/F%');
+                })->count();
+ 
+            if ($realFemales <= $queenLimit) {
+                $profile->update(['badge' => 'queen']);
+            }
+ 
+        } elseif ($profile->gender === 'homme') {
+            $realMales = \App\Models\Profile::where('gender', 'homme')
+                ->where(function ($q) {
+                    $q->whereNull('photo')
+                      ->orWhere('photo', 'NOT LIKE', 'avatars/H%');
+                })->count();
+ 
+            if ($realMales <= $kingLimit) {
+                $profile->update(['badge' => 'king']);
+            }
+        }
 
         if ($request->expectsJson()) {
             return response()->json(['success' => true, 'redirect' => route('swipe')]);

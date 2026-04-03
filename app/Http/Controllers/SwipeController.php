@@ -102,6 +102,7 @@ class SwipeController extends Controller
                 'photo' => $profile->photo_url,
                 'university' => $profile->university_name,
                 'gradient' => 'from-rose-300 to-purple-400',
+                'badge' => $profile->badge,
             ];
         })->values();
     }

@@ -332,9 +332,14 @@
                 <div class="flex items-end justify-between mb-2">
                     <div>
                         <div class="flex items-baseline gap-2">
-                            <h2 class="text-2xl font-bold text-white leading-none">${escapeHtml(profile.name)}</h2>
-                            <span class="text-lg text-white/60 font-light">${profile.age}</span>
-                        </div>
+    <h2 class="text-2xl font-bold text-white leading-none">${escapeHtml(profile.name)}</h2>
+    <span class="text-lg text-white/60 font-light">${profile.age}</span>
+</div>
+${profile.badge === 'queen'
+    ? `<span style="display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:rgba(255,193,69,0.15);border:1px solid rgba(255,193,69,0.35);color:#ffc145;margin-top:4px;">👑 Campus Queen</span>`
+    : profile.badge === 'king'
+    ? `<span style="display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:rgba(143,199,64,0.15);border:1px solid rgba(143,199,64,0.35);color:#8fc740;margin-top:4px;">🏆 Campus King</span>`
+    : ''}
                         <div class="flex items-center gap-1.5 mt-1.5">
                             <svg class="w-3.5 h-3.5 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
                             <span class="text-xs text-white/50">${escapeHtml(profile.major || '')} ${profile.year ? '• ' + profile.year : ''}</span>
