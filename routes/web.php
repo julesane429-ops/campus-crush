@@ -96,6 +96,11 @@ Route::middleware(['auth', 'subscription'])->group(function () {
 
     // Qui t'a liké
     Route::get('/likes', [App\Http\Controllers\LikeController::class, 'whoLikedMe'])->name('likes.index');
+
+    // Boost de profil
+    Route::get('/boost', [App\Http\Controllers\BoostController::class, 'index'])->name('boost.index');
+    Route::post('/boost/pay', [App\Http\Controllers\BoostController::class, 'pay'])->name('boost.pay');
+    Route::get('/boost/success', [App\Http\Controllers\BoostController::class, 'success'])->name('boost.success');
 });
 
 // ── Panel Admin ──

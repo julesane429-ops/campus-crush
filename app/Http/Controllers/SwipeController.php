@@ -84,7 +84,10 @@ class SwipeController extends Controller
 
         $profiles = $query->get()
             ->filter(fn($c) => $c->profile !== null)
-            ->sortByDesc(fn($c) => $this->compatibility->calculate($user, $c->profile))
+            ->sortByDesc(fn($c) => [
+                $c->profile->isBoosted() ? 1 : 0,
+                $this->compatibility->calculate($user, $c->profile),
+            ])
             ->take(10);
 
         return $profiles->map(function ($candidate) use ($user) {
@@ -102,7 +105,8 @@ class SwipeController extends Controller
                 'photo' => $profile->photo_url,
                 'university' => $profile->university_name,
                 'gradient' => 'from-rose-300 to-purple-400',
-                'badge' => $profile->badge,
+                'badge'   => $profile->badge,
+                'boosted' => $profile->isBoosted(),
             ];
         })->values();
     }
