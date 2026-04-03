@@ -2,22 +2,34 @@
 {{-- Inclure dans home.blade.php juste avant </body> avec : @include('components.promo-popup') --}}
 
 @php
-    $femalesCount  = \App\Models\Profile::where('gender', 'femme')->count();
-    $malesCount    = \App\Models\Profile::where('gender', 'homme')->count();
+    // On exclut les profils seedés (faux profils) qui ont une photo générée
+    // par le seeder (pattern avatars/F* ou avatars/H*) pour ne compter
+    // que les vraies inscriptions réelles.
+    $femalesCount = \App\Models\Profile::where('gender', 'femme')
+        ->where(function($q) {
+            $q->whereNull('photo')
+              ->orWhere('photo', 'NOT LIKE', 'avatars/F%');
+        })->count();
 
-    $queenLimit    = 100;
-    $kingLimit     = 50;
+    $malesCount = \App\Models\Profile::where('gender', 'homme')
+        ->where(function($q) {
+            $q->whereNull('photo')
+              ->orWhere('photo', 'NOT LIKE', 'avatars/H%');
+        })->count();
 
-    $queenTaken    = min($femalesCount, $queenLimit);
-    $queenLeft     = max(0, $queenLimit - $queenTaken);
-    $queenPct      = round(($queenTaken / $queenLimit) * 100);
+    $queenLimit = 100;
+    $kingLimit  = 50;
 
-    $kingTaken     = min($malesCount, $kingLimit);
-    $kingLeft      = max(0, $kingLimit - $kingTaken);
-    $kingPct       = round(($kingTaken / $kingLimit) * 100);
+    $queenTaken = min($femalesCount, $queenLimit);
+    $queenLeft  = max(0, $queenLimit - $queenTaken);
+    $queenPct   = round(($queenTaken / $queenLimit) * 100);
+
+    $kingTaken  = min($malesCount, $kingLimit);
+    $kingLeft   = max(0, $kingLimit - $kingTaken);
+    $kingPct    = round(($kingTaken / $kingLimit) * 100);
 
     // N'afficher le popup que si au moins une offre est encore active
-    $showPopup     = $queenLeft > 0 || $kingLeft > 0;
+    $showPopup  = $queenLeft > 0 || $kingLeft > 0;
 @endphp
 
 @if($showPopup)
