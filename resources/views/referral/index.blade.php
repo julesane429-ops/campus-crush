@@ -232,7 +232,7 @@
 
     <script>
         const referralLink = @json($referralLink);
-        const referralCode = @json($user - > referral_code);
+        const referralCode = @json($user -> referral_code);
 
         function copyLink() {
             navigator.clipboard.writeText(referralLink).then(() => {
