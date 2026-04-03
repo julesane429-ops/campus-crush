@@ -69,11 +69,22 @@ class User extends Authenticatable
         return $this->hasMany(Payment::class);
     }
 
+     public function matchesAsUser1()
+    {
+        return $this->hasMany(\App\Models\Matche::class, 'user1_id');
+    }
+ 
+    public function matchesAsUser2()
+    {
+        return $this->hasMany(\App\Models\Matche::class, 'user2_id');
+    }
+ 
     public function matches()
     {
-        return Matche::where('user1_id', $this->id)
+        return \App\Models\Matche::where('user1_id', $this->id)
             ->orWhere('user2_id', $this->id);
     }
+ 
 
     // ── Helpers ──
 

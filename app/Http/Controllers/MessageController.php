@@ -106,8 +106,6 @@ class MessageController extends Controller
             $match->id
         );
 
-        // Broadcast notification sur le canal privé
-        broadcast(new \App\Events\NewMatch($match, $user))->toOthers();
 
         if ($request->expectsJson()) {
             return response()->json([

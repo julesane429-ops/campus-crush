@@ -164,6 +164,9 @@
             fd.append('password_confirmation', document.getElementById('password_confirmation').value);
             fd.append('terms', document.querySelector('input[name="terms"]').checked ? '1' : '');
 
+            const refInput = document.querySelector('input[name="ref"]');
+            if (refInput) fd.append('ref', refInput.value);
+
             const btn = document.getElementById('submit-btn');
             btn.disabled = true;
             btn.textContent = 'Création...';

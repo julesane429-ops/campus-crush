@@ -25,15 +25,17 @@ class MessageSent implements ShouldBroadcastNow
     public function __construct(Message $message)
     {
         $sender = $message->sender;
-        $this->matchId = $message->match_id;
-        $this->senderId = $message->sender_id;
-        $this->senderName = $sender->name;
-        $this->senderPhoto = $sender->profile?->photo_url ?? asset('storage/profiles/default-avatar.png');
-        $this->message = $message->message;
-        $this->time = $message->created_at->format('H:i');
-        $this->messageId = $message->id;
+        $this->matchId     = $message->match_id;
+        $this->senderId    = $message->sender_id;
+        $this->senderName  = $sender->name;
+        $this->senderPhoto = $sender->profile?->photo_url ?? asset('images/default-avatar.png');
+        $this->message     = $message->message;
+        $this->time        = $message->created_at->format('H:i');
+        $this->messageId   = $message->id;
+
+        // ✅ Fix bug #1 : utilise $a->url qui gère S3 correctement
         $this->attachments = $message->attachments->map(fn($a) => [
-            'url' => asset('storage/' . $a->file_path),
+            'url' => $a->url,
         ])->toArray();
     }
 
