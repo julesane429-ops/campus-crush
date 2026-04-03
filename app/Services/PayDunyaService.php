@@ -121,6 +121,88 @@ class PayDunyaService
         }
     }
 
+     /**
+     * Créer une facture PayDunya pour un boost de profil 24h (500 FCFA).
+     */
+    public function createBoostInvoice(int $userId, string $userName, string $userEmail): array
+    {
+        $amount = 500;
+ 
+        $payload = [
+            'invoice' => [
+                'total_amount' => $amount,
+                'description'  => 'Boost profil Campus Crush - 24h',
+            ],
+            'store' => [
+                'name'        => config('paydunya.store.name'),
+                'tagline'     => config('paydunya.store.tagline'),
+                'phone'       => config('paydunya.store.phone'),
+                'website_url' => config('paydunya.store.website'),
+            ],
+            'items' => [
+                'item_0' => [
+                    'name'        => 'Boost profil 24h',
+                    'quantity'    => 1,
+                    'unit_price'  => $amount,
+                    'total_price' => $amount,
+                    'description' => 'Ton profil apparaît en tête du swipe pendant 24h',
+                ],
+            ],
+            'actions' => [
+                'return_url'   => route('boost.success'),
+                'cancel_url'   => route('boost.index'),
+                'callback_url' => route('webhook.paydunya'), // IPN existant
+            ],
+            'custom_data' => [
+                'user_id'    => $userId,
+                'user_name'  => $userName,
+                'user_email' => $userEmail,
+                'type'       => 'boost', // pour distinguer dans le webhook
+            ],
+            'channels' => [
+                'orange-money-senegal',
+                'wave-senegal',
+                'free-money-senegal',
+            ],
+        ];
+ 
+        try {
+            $response = Http::withoutVerifying()
+                ->withHeaders($this->headers)
+                ->post($this->baseUrl . '/checkout-invoice/create', $payload);
+ 
+            $data = $response->json();
+ 
+            Log::info('PayDunya boost invoice response', ['data' => $data]);
+ 
+            if ($response->successful() && isset($data['response_code']) && $data['response_code'] === '00') {
+                return [
+                    'success' => true,
+                    'url'     => $data['response_text'],
+                    'token'   => $data['token'] ?? null,
+                    'error'   => null,
+                ];
+            }
+ 
+            return [
+                'success' => false,
+                'url'     => null,
+                'token'   => null,
+                'error'   => $data['response_text'] ?? 'Erreur PayDunya inconnue',
+            ];
+ 
+        } catch (\Exception $e) {
+            Log::error('PayDunya boost error', ['message' => $e->getMessage()]);
+            return [
+                'success' => false,
+                'url'     => null,
+                'token'   => null,
+                'error'   => 'Erreur de connexion au service de paiement',
+            ];
+        }
+    }
+ 
+
     /**
      * Vérifier le statut d'un paiement via le token de facture.
      *
