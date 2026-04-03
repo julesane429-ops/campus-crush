@@ -105,7 +105,7 @@
                     <div style="background:rgba(255,255,255,0.05); border-radius:11px; padding:11px 13px; margin-bottom:8px; display:flex; align-items:center; gap:10px;">
                         <span style="font-size:18px; flex-shrink:0;">🎁</span>
                         <div>
-                            <p style="font-size:14px; font-weight:700; color:#fff; margin:0 0 2px;">1 mois gratuits</p>
+                            <p style="font-size:14px; font-weight:700; color:#fff; margin:0 0 2px;">3 mois gratuits</p>
                             <p style="font-size:11px; color:rgba(255,255,255,0.32); margin:0;">Accès premium complet</p>
                         </div>
                     </div>
