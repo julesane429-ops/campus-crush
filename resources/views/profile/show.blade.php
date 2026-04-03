@@ -306,7 +306,7 @@
                 <a href="{{ route('profile.edit') }}" class="block w-full py-3.5 rounded-2xl text-center font-semibold text-white text-sm active:scale-[0.98] transition" style="background: linear-gradient(135deg, #ff5e6c, #ff8a5c); box-shadow: 0 8px 30px rgba(255,94,108,0.2);">
                     ✏️ Modifier mon profil
                 </a>
-                <a href="{{ route('boost.index') }}" class="block w-full py-3.5 rounded-2xl text-center font-semibold text-sm active:scale-[0.98] transition mt-3
+               <!-- <a href="{{ route('boost.index') }}" class="block w-full py-3.5 rounded-2xl text-center font-semibold text-sm active:scale-[0.98] transition mt-3
     {{ $profile->isBoosted() ? '' : '' }}"
                     style="{{ $profile->isBoosted()
         ? 'background:rgba(255,193,69,0.10); border:1px solid rgba(255,193,69,0.25); color:#ffc145;'
@@ -316,7 +316,7 @@
                     @else
                     🚀 Booster mon profil — 500 FCFA / 24h
                     @endif
-                </a>
+                </a> -->
 
                 <form method="POST" action="{{ route('logout') }}">
                     @csrf
