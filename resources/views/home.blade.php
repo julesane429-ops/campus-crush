@@ -150,5 +150,3 @@
 @include('components.promo-popup')
 </body>
 </html>
-@ i n c l u d e ( ' c o m p o n e n t s . p r o m o - p o p u p ' )  
- 
