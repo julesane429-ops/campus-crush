@@ -316,8 +316,11 @@
                     @else
                     🚀 Booster mon profil — 500 FCFA / 24h
                     @endif
-                </a> 
-
+                </a>
+                <a href="{{ route('referral.index') }}" class="block w-full py-3.5 rounded-2xl text-center font-semibold text-sm active:scale-[0.98] transition mt-3"
+                    style="background:rgba(168,85,247,0.08); border:1px solid rgba(168,85,247,0.18); color:#a855f7;">
+                    🎁 Parrainer un(e) ami(e) — gagne 7 jours
+                </a>
                 <form method="POST" action="{{ route('logout') }}">
                     @csrf
                     <button type="submit" class="w-full py-3.5 rounded-2xl text-center text-sm font-medium text-white/25 cc-surface hover:bg-white/5 hover:text-red-400/60 active:scale-[0.98] transition">

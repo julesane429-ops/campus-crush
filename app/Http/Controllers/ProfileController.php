@@ -55,7 +55,7 @@ class ProfileController extends Controller
         $photoPath = null;
         if ($request->hasFile('photo')) {
             $disk = config('filesystems.default') === 's3' ? 's3' : 'public';
-$photoPath = $request->file('photo')->store('profiles', $disk);
+            $photoPath = $request->file('photo')->store('profiles', $disk);
         }
 
         // Déterminer l'université
@@ -67,7 +67,7 @@ $photoPath = $request->file('photo')->store('profiles', $disk);
             $universityName = $uni ? $uni->short_name : 'UGB';
         }
 
-         $profile = Profile::create([
+        $profile = Profile::create([
             'user_id'        => $user->id,
             'age'            => $validated['age'],
             'gender'         => $validated['gender'],
@@ -81,31 +81,30 @@ $photoPath = $request->file('photo')->store('profiles', $disk);
             'university'     => $universityName,
             'university_id'  => $universityId,
         ]);
- 
+
         // 👑🏆 Attribution automatique des badges Campus Queen / King
         // On exclut les profils seedés (photo avatars/F* ou avatars/H*)
         // pour ne compter que les vraies inscriptions
         $queenLimit = 100;
         $kingLimit  = 50;
- 
+
         if ($profile->gender === 'femme') {
             $realFemales = \App\Models\Profile::where('gender', 'femme')
                 ->where(function ($q) {
                     $q->whereNull('photo')
-                      ->orWhere('photo', 'NOT LIKE', 'avatars/F%');
+                        ->orWhere('photo', 'NOT LIKE', 'avatars/F%');
                 })->count();
- 
+
             if ($realFemales <= $queenLimit) {
                 $profile->update(['badge' => 'queen']);
             }
- 
         } elseif ($profile->gender === 'homme') {
             $realMales = \App\Models\Profile::where('gender', 'homme')
                 ->where(function ($q) {
                     $q->whereNull('photo')
-                      ->orWhere('photo', 'NOT LIKE', 'avatars/H%');
+                        ->orWhere('photo', 'NOT LIKE', 'avatars/H%');
                 })->count();
- 
+
             if ($realMales <= $kingLimit) {
                 $profile->update(['badge' => 'king']);
             }
@@ -114,6 +113,36 @@ $photoPath = $request->file('photo')->store('profiles', $disk);
         if ($request->expectsJson()) {
             return response()->json(['success' => true, 'redirect' => route('swipe')]);
         }
+
+        // 🎁 Récompenser le parrain si ce filleul a été parrainé
+        $referral = \App\Models\Referral::where('referred_id', $user->id)
+            ->where('rewarded', false)
+            ->first();
+
+        if ($referral) {
+            // Accorder 7 jours de premium au parrain
+            $referrerSub = \App\Models\Subscription::where('user_id', $referral->referrer_id)
+                ->latest()->first();
+
+            if ($referrerSub) {
+                $endDate = $referrerSub->ends_at && $referrerSub->ends_at->isFuture()
+                    ? $referrerSub->ends_at
+                    : now();
+
+                $referrerSub->update([
+                    'ends_at'       => $endDate->addDays(7),
+                    'trial_ends_at' => $referrerSub->status === 'trial'
+                        ? ($referrerSub->trial_ends_at?->isFuture() ? $referrerSub->trial_ends_at->addDays(7) : now()->addDays(7))
+                        : $referrerSub->trial_ends_at,
+                ]);
+            }
+
+            $referral->update([
+                'rewarded'    => true,
+                'rewarded_at' => now(),
+            ]);
+        }
+
         return redirect()->route('swipe');
     }
 
@@ -128,8 +157,11 @@ $photoPath = $request->file('photo')->store('profiles', $disk);
         $lastMatch = Matche::forUser($user->id)->latest()->first();
 
         return view('profile.show', [
-            'user' => $user, 'profile' => $profile,
-            'likesCount' => $likesCount, 'matchesCount' => $matchesCount, 'lastMatch' => $lastMatch,
+            'user' => $user,
+            'profile' => $profile,
+            'likesCount' => $likesCount,
+            'matchesCount' => $matchesCount,
+            'lastMatch' => $lastMatch,
         ]);
     }
 
@@ -162,9 +194,12 @@ $photoPath = $request->file('photo')->store('profiles', $disk);
         ]);
 
         $data = [
-            'age' => $validated['age'], 'gender' => $validated['gender'],
-            'ufr' => $validated['ufr'], 'level' => $validated['level'],
-            'bio' => $validated['bio'], 'promotion' => $validated['promotion'] ?? $profile->promotion,
+            'age' => $validated['age'],
+            'gender' => $validated['gender'],
+            'ufr' => $validated['ufr'],
+            'level' => $validated['level'],
+            'bio' => $validated['bio'],
+            'promotion' => $validated['promotion'] ?? $profile->promotion,
         ];
 
         if (isset($validated['university_id'])) {
@@ -175,9 +210,9 @@ $photoPath = $request->file('photo')->store('profiles', $disk);
 
         if ($request->hasFile('photo')) {
             $diskDel = config('filesystems.default') === 's3' ? 's3' : 'public';
-if ($profile->photo) Storage::disk($diskDel)->delete($profile->photo);
+            if ($profile->photo) Storage::disk($diskDel)->delete($profile->photo);
             $disk = config('filesystems.default') === 's3' ? 's3' : 'public';
-$data['photo'] = $request->file('photo')->store('profiles', $disk);
+            $data['photo'] = $request->file('photo')->store('profiles', $disk);
         }
 
         $profile->update($data);
@@ -190,7 +225,7 @@ $data['photo'] = $request->file('photo')->store('profiles', $disk);
         $request->validateWithBag('userDeletion', ['password' => ['required', 'current_password']]);
         $user = $request->user();
         $disk = config('filesystems.default') === 's3' ? 's3' : 'public';
-if ($user->profile?->photo) Storage::disk($disk)->delete($user->profile->photo);
+        if ($user->profile?->photo) Storage::disk($disk)->delete($user->profile->photo);
         Auth::logout();
         $user->delete();
         $request->session()->invalidate();

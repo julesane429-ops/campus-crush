@@ -11,8 +11,13 @@ use Illuminate\Validation\Rules\Password;
 
 class AuthController extends Controller
 {
-    public function showRegister()
+    public function showRegister(Request $request)
     {
+        // Mémoriser le code parrain en session si l'URL contient ?ref=XXXX
+        if ($request->has('ref')) {
+            session(['referral_code' => $request->input('ref')]);
+        }
+
         return view('auth.register');
     }
 
@@ -33,7 +38,30 @@ class AuthController extends Controller
 
         // 🎁 Créer l'essai gratuit de 30 jours
         Subscription::createTrial($user->id);
-        
+
+        // Générer le code de parrainage de ce nouvel utilisateur
+        $user->update([
+            'referral_code' => strtoupper(substr(md5($user->id . $user->email), 0, 8)),
+        ]);
+
+        // Si un code parrain est présent dans la session ou la requête
+        $refCode = $request->input('ref') ?? session('referral_code');
+        if ($refCode) {
+            $referrer = \App\Models\User::where('referral_code', $refCode)
+                ->where('id', '!=', $user->id)
+                ->first();
+
+            if ($referrer) {
+                $user->update(['referred_by' => $referrer->id]);
+                \App\Models\Referral::create([
+                    'referrer_id' => $referrer->id,
+                    'referred_id' => $user->id,
+                    'rewarded'    => false,
+                ]);
+            }
+            session()->forget('referral_code');
+        }
+
         Auth::login($user);
 
         if ($request->expectsJson()) {

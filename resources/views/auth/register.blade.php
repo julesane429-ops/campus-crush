@@ -130,6 +130,9 @@
                         Je confirme avoir au moins 18 ans.
                     </span>
                 </label>
+                @if(session('referral_code'))
+                <input type="hidden" name="ref" value="{{ session('referral_code') }}">
+                @endif
                 <button type="submit" id="submit-btn" class="w-full py-4 rounded-2xl font-semibold text-white text-base transition hover:-translate-y-0.5 active:scale-[0.98]" style="background: linear-gradient(135deg, #ff5e6c, #ff8a5c); box-shadow: 0 8px 30px rgba(255,94,108,0.3);">
                     Créer mon compte
                 </button>

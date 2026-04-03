@@ -18,6 +18,8 @@ class User extends Authenticatable
         'is_admin',
         'is_banned',
         'ban_reason',
+        'referral_code',
+        'referred_by',
     ];
 
     protected $hidden = [
@@ -112,5 +114,15 @@ class User extends Authenticatable
         }
 
         return $sub;
+    }
+
+    public function referrals()
+    {
+        return $this->hasMany(\App\Models\Referral::class, 'referrer_id');
+    }
+
+    public function referredBy()
+    {
+        return $this->belongsTo(User::class, 'referred_by');
     }
 }

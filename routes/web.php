@@ -58,18 +58,18 @@ Route::middleware('auth')->group(function () {
     Route::post('/notifications/{id}/read', [NotificationController::class, 'markRead']);
 
     Route::post('/push/subscribe', [App\Http\Controllers\PushController::class, 'subscribe']);
-Route::post('/push/unsubscribe', [App\Http\Controllers\PushController::class, 'unsubscribe']);
+    Route::post('/push/unsubscribe', [App\Http\Controllers\PushController::class, 'unsubscribe']);
 
-Route::get('/user/{id}/status', function (int $id) {
-    $user = \App\Models\User::with('profile')->find($id);
-    if (!$user || !$user->profile) return response()->json(['online' => false]);
-    $lastSeen = $user->profile->last_seen_at;
-    $online = $lastSeen && now()->diffInMinutes($lastSeen) < 2;
-    return response()->json([
-        'online' => $online,
-        'last_seen' => $lastSeen?->diffForHumans(),
-    ]);
-})->name('user.status');
+    Route::get('/user/{id}/status', function (int $id) {
+        $user = \App\Models\User::with('profile')->find($id);
+        if (!$user || !$user->profile) return response()->json(['online' => false]);
+        $lastSeen = $user->profile->last_seen_at;
+        $online = $lastSeen && now()->diffInMinutes($lastSeen) < 2;
+        return response()->json([
+            'online' => $online,
+            'last_seen' => $lastSeen?->diffForHumans(),
+        ]);
+    })->name('user.status');
 });
 
 // ── Routes avec abonnement requis ──
@@ -101,6 +101,8 @@ Route::middleware(['auth', 'subscription'])->group(function () {
     Route::get('/boost', [App\Http\Controllers\BoostController::class, 'index'])->name('boost.index');
     Route::post('/boost/pay', [App\Http\Controllers\BoostController::class, 'pay'])->name('boost.pay');
     Route::get('/boost/success', [App\Http\Controllers\BoostController::class, 'success'])->name('boost.success');
+
+    Route::get('/referral', [App\Http\Controllers\ReferralController::class, 'index'])->name('referral.index');
 });
 
 // ── Panel Admin ──
