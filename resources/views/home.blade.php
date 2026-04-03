@@ -147,5 +147,6 @@
     </footer>
 </div>
 @include('components.pwa-install-banner')
+@include('components.promo-popup')
 </body>
 </html>
