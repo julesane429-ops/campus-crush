@@ -70,6 +70,10 @@ Route::middleware('auth')->group(function () {
             'last_seen' => $lastSeen?->diffForHumans(),
         ]);
     })->name('user.status');
+
+    // Avis
+Route::post('/review', [App\Http\Controllers\ReviewController::class, 'store'])->name('review.store');
+Route::delete('/review', [App\Http\Controllers\ReviewController::class, 'destroy'])->name('review.destroy');
 });
 
 // ── Routes avec abonnement requis ──
@@ -116,4 +120,10 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::post('/reports/{id}/resolve', [AdminController::class, 'resolveReport'])->name('reports.resolve');
     Route::get('/payments', [AdminController::class, 'payments'])->name('payments');
     Route::get('/analytics', [AdminController::class, 'analytics'])->name('analytics');
+
+    Route::get('/reviews', [AdminController::class, 'reviews'])->name('reviews');
+Route::post('/reviews/{id}/approve', [AdminController::class, 'approveReview'])->name('reviews.approve');
+Route::post('/reviews/{id}/reject', [AdminController::class, 'rejectReview'])->name('reviews.reject');
+Route::post('/reviews/{id}/feature', [AdminController::class, 'featureReview'])->name('reviews.feature');
+Route::delete('/reviews/{id}', [AdminController::class, 'deleteReview'])->name('reviews.delete');
 });
