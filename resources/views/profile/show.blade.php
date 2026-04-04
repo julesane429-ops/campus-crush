@@ -344,7 +344,11 @@
                     </button>
                 </div>
             </div>
-            @include('components.review-form')
+            @try
+    @include('components.review-form')
+@catch (\Exception $e)
+    {{-- Reviews pas encore disponible --}}
+@endtry
             {{-- ═══════════════════════════════ --}}
             {{-- ACTIONS --}}
             {{-- ═══════════════════════════════ --}}
