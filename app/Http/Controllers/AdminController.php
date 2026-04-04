@@ -11,6 +11,7 @@ use App\Models\Payment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use App\Models\Review;
 
 class AdminController extends Controller
 {
@@ -28,15 +29,15 @@ class AdminController extends Controller
             'active_subscriptions' => Subscription::whereIn('status', ['trial', 'active'])
                 ->where(function ($q) {
                     $q->where('ends_at', '>', now())
-                      ->orWhere('trial_ends_at', '>', now());
+                        ->orWhere('trial_ends_at', '>', now());
                 })->count(),
             'total_revenue' => Payment::where('status', 'completed')->sum('amount'),
             'revenue_month' => Payment::where('status', 'completed')
                 ->where('created_at', '>=', now()->startOfMonth())->sum('amount'),
             'men_count' => User::whereHas('profile', fn($q) => $q->where('gender', 'homme'))->count(),
-'women_count' => User::whereHas('profile', fn($q) => $q->where('gender', 'femme'))->count(),
-'men_online' => User::whereHas('profile', fn($q) => $q->where('gender', 'homme')->where('last_seen_at', '>=', now()->subMinutes(2)))->count(),
-'women_online' => User::whereHas('profile', fn($q) => $q->where('gender', 'femme')->where('last_seen_at', '>=', now()->subMinutes(2)))->count(),
+            'women_count' => User::whereHas('profile', fn($q) => $q->where('gender', 'femme'))->count(),
+            'men_online' => User::whereHas('profile', fn($q) => $q->where('gender', 'homme')->where('last_seen_at', '>=', now()->subMinutes(2)))->count(),
+            'women_online' => User::whereHas('profile', fn($q) => $q->where('gender', 'femme')->where('last_seen_at', '>=', now()->subMinutes(2)))->count(),
         ];
 
         $recentUsers = User::with('profile', 'subscription')
@@ -55,7 +56,7 @@ class AdminController extends Controller
         if ($search = $request->search) {
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
+                    ->orWhere('email', 'like', "%{$search}%");
             });
         }
 
@@ -139,7 +140,7 @@ class AdminController extends Controller
     public function analytics()
     {
         $days = 30; // Fenêtre d'analyse : 30 derniers jours
- 
+
         // ── Inscriptions par jour (30j) ──────────────────────────────────
         $registrations = DB::table('users')
             ->select(DB::raw('DATE(created_at) as date'), DB::raw('COUNT(*) as total'))
@@ -148,7 +149,7 @@ class AdminController extends Controller
             ->orderBy('date')
             ->get()
             ->keyBy('date');
- 
+
         // ── Matchs par jour (30j) ────────────────────────────────────────
         $matchesByDay = DB::table('matches')
             ->select(DB::raw('DATE(created_at) as date'), DB::raw('COUNT(*) as total'))
@@ -157,7 +158,7 @@ class AdminController extends Controller
             ->orderBy('date')
             ->get()
             ->keyBy('date');
- 
+
         // ── Revenus par jour (30j) ───────────────────────────────────────
         $revenueByDay = DB::table('payments')
             ->select(DB::raw('DATE(created_at) as date'), DB::raw('SUM(amount) as total'))
@@ -167,21 +168,21 @@ class AdminController extends Controller
             ->orderBy('date')
             ->get()
             ->keyBy('date');
- 
+
         // ── Remplir tous les jours (même ceux sans données) ─────────────
         $labels       = [];
         $regData      = [];
         $matchData    = [];
         $revenueData  = [];
- 
+
         for ($i = $days - 1; $i >= 0; $i--) {
             $date       = now()->subDays($i)->toDateString();
             $labels[]   = Carbon::parse($date)->format('d/m');
             $regData[]  = $registrations->get($date)?->total ?? 0;
-            $matchData[]= $matchesByDay->get($date)?->total ?? 0;
+            $matchData[] = $matchesByDay->get($date)?->total ?? 0;
             $revenueData[] = $revenueByDay->get($date)?->total ?? 0;
         }
- 
+
         // ── Répartition par université ───────────────────────────────────
         $byUniversity = DB::table('profiles')
             ->select('university', DB::raw('COUNT(*) as total'))
@@ -190,7 +191,7 @@ class AdminController extends Controller
             ->orderByDesc('total')
             ->limit(8)
             ->get();
- 
+
         // ── Répartition par UFR ──────────────────────────────────────────
         $byUfr = DB::table('profiles')
             ->select('ufr', DB::raw('COUNT(*) as total'))
@@ -198,7 +199,7 @@ class AdminController extends Controller
             ->groupBy('ufr')
             ->orderByDesc('total')
             ->get();
- 
+
         // ── KPIs globaux ─────────────────────────────────────────────────
         $kpis = [
             'total_users'       => DB::table('users')->count(),
@@ -210,18 +211,59 @@ class AdminController extends Controller
                 ? round((DB::table('matches')->count() / DB::table('users')->count()) * 100, 1)
                 : 0,
             'total_revenue'     => DB::table('payments')->where('status', 'completed')->sum('amount'),
-            'revenue_this_month'=> DB::table('payments')->where('status', 'completed')->where('created_at', '>=', now()->startOfMonth())->sum('amount'),
+            'revenue_this_month' => DB::table('payments')->where('status', 'completed')->where('created_at', '>=', now()->startOfMonth())->sum('amount'),
             'paying_users'      => DB::table('payments')->where('status', 'completed')->distinct('user_id')->count('user_id'),
             'women_count'       => DB::table('profiles')->where('gender', 'femme')->count(),
             'men_count'         => DB::table('profiles')->where('gender', 'homme')->count(),
             'boosted_now'       => DB::table('profiles')->where('boosted_until', '>', now())->count(),
             'referrals_total'   => DB::table('referrals')->count(),
-            'referrals_rewarded'=> DB::table('referrals')->where('rewarded', true)->count(),
+            'referrals_rewarded' => DB::table('referrals')->where('rewarded', true)->count(),
         ];
- 
+
         return view('admin.analytics', compact(
-            'labels', 'regData', 'matchData', 'revenueData',
-            'byUniversity', 'byUfr', 'kpis', 'days'
+            'labels',
+            'regData',
+            'matchData',
+            'revenueData',
+            'byUniversity',
+            'byUfr',
+            'kpis',
+            'days'
         ));
+    }
+
+    public function reviews(Request $request)
+    {
+        $query = Review::with('user.profile');
+        if ($request->status && $request->status !== 'all') {
+            $query->where('status', $request->status);
+        }
+        $reviews = $query->latest()->paginate(20);
+        return view('admin.reviews', compact('reviews'));
+    }
+
+    public function approveReview(int $id)
+    {
+        Review::findOrFail($id)->update(['status' => 'approved']);
+        return back()->with('success', 'Avis approuvé.');
+    }
+
+    public function rejectReview(int $id)
+    {
+        Review::findOrFail($id)->update(['status' => 'rejected', 'is_featured' => false]);
+        return back()->with('success', 'Avis rejeté.');
+    }
+
+    public function featureReview(int $id)
+    {
+        $review = Review::findOrFail($id);
+        $review->update(['is_featured' => !$review->is_featured]);
+        return back()->with('success', $review->is_featured ? 'Mis en avant.' : 'Retiré.');
+    }
+
+    public function deleteReview(int $id)
+    {
+        Review::findOrFail($id)->delete();
+        return back()->with('success', 'Avis supprimé.');
     }
 }

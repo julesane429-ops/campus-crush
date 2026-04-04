@@ -237,6 +237,40 @@
             </div>
         </section>
 
+        {{-- Avis utilisateurs --}}
+        @php
+        $featuredReviews = \App\Models\Review::featured()->with('user.profile')->latest()->take(6)->get();
+        @endphp
+        @if($featuredReviews->count() > 0)
+        <section class="px-5 py-20">
+            <div class="max-w-4xl mx-auto">
+                <h2 class="text-center text-3xl md:text-4xl font-bold mb-4">Ce qu'ils en <span class="cc-gradient-text">pensent</span></h2>
+                <p class="text-center text-white/30 mb-14">Les étudiants parlent de Campus Crush</p>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                    @foreach($featuredReviews as $rev)
+                    <div class="step-card rounded-2xl p-6">
+                        <div class="flex items-center gap-0.5 mb-3">
+                            @for($i = 1; $i <= 5; $i++)
+                                <span class="text-sm {{ $i <= $rev->rating ? 'text-[#ffc145]' : 'text-white/10' }}">★</span>
+                                @endfor
+                        </div>
+                        <p class="text-sm text-white/50 leading-relaxed mb-4">« {{ Str::limit($rev->comment, 150) }} »</p>
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-full overflow-hidden bg-white/5">
+                                <img src="{{ $rev->user->profile?->photo_url ?? 'https://ui-avatars.com/api/?background=1a1145&color=ff5e6c&bold=true&name=' . urlencode(substr($rev->user->name, 0, 2)) }}" class="w-full h-full object-cover">
+                            </div>
+                            <div>
+                                <p class="text-xs font-medium text-white/60">{{ $rev->user->name }}</p>
+                                <p class="text-[10px] text-white/25">{{ $rev->user->profile?->university_name ?? 'Étudiant' }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    @endforeach
+                </div>
+            </div>
+        </section>
+        @endif
+
         {{-- CTA --}}
         <section class="px-5 py-16">
             <div class="max-w-xl mx-auto">
