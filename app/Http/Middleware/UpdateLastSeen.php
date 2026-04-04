@@ -12,23 +12,19 @@ class UpdateLastSeen
 {
     /**
      * Met à jour la dernière activité de l'utilisateur.
-     * ✅ Fix bug #2 : throttle à 30 secondes via cache pour éviter
-     * une écriture en base à chaque requête HTTP.
+     * Throttled: max 1 write toutes les 30 secondes par utilisateur.
      */
     public function handle(Request $request, Closure $next): Response
     {
         if (Auth::check() && Auth::user()->profile) {
-            $userId   = Auth::id();
-            $cacheKey = "last_seen_{$userId}";
+            $cacheKey = 'last_seen_' . Auth::id();
 
-            // N'écrire en base que si la clé cache n'existe pas encore
+            // Ne met à jour que toutes les 30 secondes
             if (!Cache::has($cacheKey)) {
                 Auth::user()->profile->update([
                     'last_seen_at' => now(),
                 ]);
-
-                // Bloquer les prochaines écritures pendant 30 secondes
-                Cache::put($cacheKey, true, now()->addSeconds(30));
+                Cache::put($cacheKey, true, 30);
             }
         }
 
