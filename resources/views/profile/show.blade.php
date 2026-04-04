@@ -300,37 +300,132 @@
             </div>
 
             {{-- ═══════════════════════════════ --}}
-            {{-- ACTIONS --}}
-            {{-- ═══════════════════════════════ --}}
-            <div class="space-y-3 fade-up d5">
-                <a href="{{ route('profile.edit') }}" class="block w-full py-3.5 rounded-2xl text-center font-semibold text-white text-sm active:scale-[0.98] transition" style="background: linear-gradient(135deg, #ff5e6c, #ff8a5c); box-shadow: 0 8px 30px rgba(255,94,108,0.2);">
-                    ✏️ Modifier mon profil
-                </a>
-                <a href="{{ route('boost.index') }}" class="block w-full py-3.5 rounded-2xl text-center font-semibold text-sm active:scale-[0.98] transition mt-3
-    {{ $profile->isBoosted() ? '' : '' }}"
-                    style="{{ $profile->isBoosted()
-        ? 'background:rgba(255,193,69,0.10); border:1px solid rgba(255,193,69,0.25); color:#ffc145;'
-        : 'background:rgba(255,193,69,0.08); border:1px solid rgba(255,193,69,0.15); color:#ffc145;' }}">
-                    @if($profile->isBoosted())
-                    🚀 Profil boosté — actif jusqu'à {{ $profile->boosted_until->format('H:i') }}
-                    @else
-                    🚀 Booster mon profil — 500 FCFA / 24h
+{{-- STREAK --}}
+{{-- ═══════════════════════════════ --}}
+@if(($user->streak_days ?? 0) > 0)
+<div class="fade-up d4 mb-3">
+    <div class="flex items-center justify-between px-4 py-3 rounded-2xl" style="background:rgba(255,193,69,0.08); border:1px solid rgba(255,193,69,0.18);">
+        <div class="flex items-center gap-2.5">
+            <span class="text-xl">{{ $user->streak_badge ?: '🔥' }}</span>
+            <div>
+                <p class="text-sm font-bold text-white">{{ $user->streak_days }} jour{{ $user->streak_days > 1 ? 's' : '' }} de suite</p>
+                <p class="text-[10px]" style="color:rgba(255,255,255,0.35);">
+                    @if($user->streak_days >= 100) Légendaire 🏆
+                    @elseif($user->streak_days >= 30) Habitué ⚡
+                    @elseif($user->streak_days >= 7) En feu 🔥
+                    @else Continue comme ça !
                     @endif
-                </a>
-                <a href="{{ route('referral.index') }}" class="block w-full py-3.5 rounded-2xl text-center font-semibold text-sm active:scale-[0.98] transition mt-3"
-                    style="background:rgba(168,85,247,0.08); border:1px solid rgba(168,85,247,0.18); color:#a855f7;">
-                    🎁 Parrainer un(e) ami(e) — gagne 7 jours
-                </a>
-                <form method="POST" action="{{ route('logout') }}">
-                    @csrf
-                    <button type="submit" class="w-full py-3.5 rounded-2xl text-center text-sm font-medium text-white/25 cc-surface hover:bg-white/5 hover:text-red-400/60 active:scale-[0.98] transition">
-                        Déconnexion
-                    </button>
-                </form>
+                </p>
             </div>
+        </div>
+        <div class="text-right">
+            <p class="text-xs font-semibold" style="color:#ffc145;">Streak actif</p>
+            @if($user->streak_days == 6)
+            <p class="text-[10px]" style="color:rgba(255,255,255,0.30);">+3j demain 🎁</p>
+            @elseif($user->streak_days == 29)
+            <p class="text-[10px]" style="color:rgba(255,255,255,0.30);">+7j demain 🎁</p>
+            @endif
+        </div>
+    </div>
+</div>
+@endif
+ 
+{{-- ═══════════════════════════════ --}}
+{{-- PARTAGE VIRAL --}}
+{{-- ═══════════════════════════════ --}}
+<div class="fade-up d4 mb-3">
+    <p class="text-xs font-semibold mb-2" style="color:rgba(255,255,255,0.30); letter-spacing:0.06em;">PARTAGER MON PROFIL</p>
+    <div class="grid grid-cols-2 gap-2">
+        <button onclick="shareWhatsApp()" class="flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-sm transition active:scale-95" style="background:rgba(37,211,102,0.10);border:1px solid rgba(37,211,102,0.22);color:#25d366;">
+            <span>💬</span> WhatsApp
+        </button>
+        <button onclick="shareNative()" class="flex items-center justify-center gap-2 py-3 rounded-xl font-semibold text-sm transition active:scale-95" style="background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.18);color:#a855f7;">
+            <span>📤</span> Partager
+        </button>
+    </div>
+</div>
+ 
+{{-- ═══════════════════════════════ --}}
+{{-- ACTIONS --}}
+{{-- ═══════════════════════════════ --}}
+<div class="space-y-3 fade-up d5">
+    <a href="{{ route('profile.edit') }}" class="block w-full py-3.5 rounded-2xl text-center font-semibold text-white text-sm active:scale-[0.98] transition" style="background: linear-gradient(135deg, #ff5e6c, #ff8a5c); box-shadow: 0 8px 30px rgba(255,94,108,0.2);">
+        ✏️ Modifier mon profil
+    </a>
+ 
+    {{-- Boost --}}
+    <a href="{{ route('boost.index') }}" class="block w-full py-3.5 rounded-2xl text-center font-semibold text-sm active:scale-[0.98] transition mt-3"
+       style="{{ $profile->isBoosted()
+            ? 'background:rgba(255,193,69,0.10); border:1px solid rgba(255,193,69,0.25); color:#ffc145;'
+            : 'background:rgba(255,193,69,0.08); border:1px solid rgba(255,193,69,0.15); color:#ffc145;' }}">
+        @if($profile->isBoosted())
+            🚀 Boosté — actif jusqu'à {{ $profile->boosted_until->format('H:i') }}
+        @else
+            🚀 Booster mon profil — 500 FCFA / 24h
+        @endif
+    </a>
+ 
+    {{-- Parrainage --}}
+    <a href="{{ route('referral.index') }}" class="block w-full py-3.5 rounded-2xl text-center font-semibold text-sm active:scale-[0.98] transition"
+       style="background:rgba(168,85,247,0.08); border:1px solid rgba(168,85,247,0.18); color:#a855f7;">
+        🎁 Parrainer un(e) ami(e) — gagne 7 jours
+    </a>
+ 
+    <form method="POST" action="{{ route('logout') }}">
+        @csrf
+        <button type="submit" class="w-full py-3.5 rounded-2xl text-center text-sm font-medium text-white/25 cc-surface hover:bg-white/5 hover:text-red-400/60 active:scale-[0.98] transition">
+            Déconnexion
+        </button>
+    </form>
+</div>
 
         </div>
     </div>
+<script>
+const profileUrl  = '{{ url()->current() }}';
+const profileName = '{{ e($user->name) }}';
+const appName     = 'Campus Crush';
+ 
+function shareWhatsApp() {
+    const msg = encodeURIComponent(
+        '👋 Salut ! Je suis sur Campus Crush, l\'appli de rencontres pour étudiants 🎓💘\n' +
+        'Rejoins-moi : https://campus-crush-h9df.onrender.com'
+    );
+    window.open('https://wa.me/?text=' + msg, '_blank');
+}
+ 
+function shareNative() {
+    if (navigator.share) {
+        navigator.share({
+            title : appName,
+            text  : '👋 ' + profileName + ' est sur Campus Crush ! Rejoins l\'appli de rencontres étudiantes 🎓💘',
+            url   : 'https://campus-crush-h9df.onrender.com',
+        });
+    } else {
+        // Fallback : copier le lien
+        navigator.clipboard?.writeText('https://campus-crush-h9df.onrender.com')
+            .then(() => alert('Lien copié !'))
+            .catch(() => {});
+    }
+}
+ 
+// 🎉 Afficher une notification si streak reward débloqué
+@if(session('streak_reward_7'))
+    showStreakToast('🔥 7 jours de suite ! +3 jours de premium offerts 🎁');
+@elseif(session('streak_reward_30'))
+    showStreakToast('⚡ 30 jours de suite ! +7 jours de premium offerts 🎁');
+@elseif(session('streak_reward_100'))
+    showStreakToast('🏆 100 jours de suite ! +30 jours de premium offerts 🎁');
+@endif
+ 
+function showStreakToast(msg) {
+    const t = document.createElement('div');
+    t.style.cssText = 'position:fixed;top:24px;left:50%;transform:translateX(-50%);z-index:99999;padding:14px 24px;border-radius:16px;font-size:13px;font-weight:600;color:#fff;text-align:center;max-width:320px;background:linear-gradient(135deg,rgba(255,193,69,0.95),rgba(255,138,92,0.95));border:1px solid rgba(255,255,255,0.15);backdrop-filter:blur(20px);font-family:Sora,sans-serif;box-shadow:0 8px 30px rgba(255,193,69,0.3);';
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(() => { t.style.transition='opacity 0.5s'; t.style.opacity='0'; setTimeout(()=>t.remove(),500); }, 4000);
+}
+</script>
 
     @include('components.bottom-nav')
 </body>

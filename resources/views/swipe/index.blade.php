@@ -280,7 +280,12 @@
         {{-- ═══════════════════════════════ --}}
         <header class="flex items-center justify-between px-4 pt-3 pb-2 flex-shrink-0 fade-up" style="padding-top: max(env(safe-area-inset-top, 12px), 12px);">
             <a href="{{ route('profile.show') }}" class="w-9 h-9 rounded-full overflow-hidden border-2 border-white/10 flex-shrink-0">
-                <img src="{{ $user->profile->photo_url }}" class="w-full h-full object-cover" alt="">
+                <a href="{{ route('profile.show') }}" class="relative w-9 h-9 rounded-full overflow-hidden border-2 border-white/10 flex-shrink-0">
+    <img src="{{ $user->profile->photo_url }}" class="w-full h-full object-cover" alt="">
+    @if(($user->streak_days ?? 0) >= 3)
+    <span class="absolute -bottom-0.5 -right-0.5 text-[10px] leading-none">{{ $user->streak_badge }}</span>
+    @endif
+</a>
             </a>
 
             <div class="flex items-center gap-1.5">
