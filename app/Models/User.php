@@ -11,17 +11,18 @@ class User extends Authenticatable
 {
     use HasFactory, Notifiable;
 
-    protected $fillable = [
+     protected $fillable = [
         'name',
         'email',
         'password',
         'is_admin',
         'is_banned',
         'ban_reason',
-        'referral_code',
+        'referral_code', 
         'referred_by',
+        'streak_days',
+        'last_login_date',   
     ];
-
     protected $hidden = [
         'password',
         'remember_token',
@@ -34,6 +35,8 @@ class User extends Authenticatable
             'password' => 'hashed',
             'is_admin' => 'boolean',
             'is_banned' => 'boolean',
+            'streak_days'     => 'integer',
+            'last_login_date' => 'date',
         ];
     }
 
@@ -135,5 +138,15 @@ class User extends Authenticatable
     public function referredBy()
     {
         return $this->belongsTo(User::class, 'referred_by');
+    }
+
+    public function getStreakBadgeAttribute(): string
+    {
+        $streak = $this->streak_days ?? 0;
+        if ($streak >= 100) return '🏆';
+        if ($streak >= 30)  return '⚡';
+        if ($streak >= 7)   return '🔥';
+        if ($streak >= 3)   return '✨';
+        return '';
     }
 }

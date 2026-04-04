@@ -26,6 +26,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->appendToGroup('web', [
             \App\Http\Middleware\CheckBanned::class,
             \App\Http\Middleware\UpdateLastSeen::class,
+            \App\Http\Middleware\UpdateStreak::class,
         ]);
 
         // Exclure le webhook PayDunya de la vérification CSRF
