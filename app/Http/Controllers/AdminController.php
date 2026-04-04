@@ -9,6 +9,8 @@ use App\Models\Message;
 use App\Models\Subscription;
 use App\Models\Payment;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 
 class AdminController extends Controller
 {
@@ -129,5 +131,97 @@ class AdminController extends Controller
     {
         $payments = Payment::with('user')->latest()->paginate(20);
         return view('admin.payments', compact('payments'));
+    }
+
+    /**
+     * Page analytics avec graphiques.
+     */
+    public function analytics()
+    {
+        $days = 30; // Fenêtre d'analyse : 30 derniers jours
+ 
+        // ── Inscriptions par jour (30j) ──────────────────────────────────
+        $registrations = DB::table('users')
+            ->select(DB::raw('DATE(created_at) as date'), DB::raw('COUNT(*) as total'))
+            ->where('created_at', '>=', now()->subDays($days))
+            ->groupBy('date')
+            ->orderBy('date')
+            ->get()
+            ->keyBy('date');
+ 
+        // ── Matchs par jour (30j) ────────────────────────────────────────
+        $matchesByDay = DB::table('matches')
+            ->select(DB::raw('DATE(created_at) as date'), DB::raw('COUNT(*) as total'))
+            ->where('created_at', '>=', now()->subDays($days))
+            ->groupBy('date')
+            ->orderBy('date')
+            ->get()
+            ->keyBy('date');
+ 
+        // ── Revenus par jour (30j) ───────────────────────────────────────
+        $revenueByDay = DB::table('payments')
+            ->select(DB::raw('DATE(created_at) as date'), DB::raw('SUM(amount) as total'))
+            ->where('status', 'completed')
+            ->where('created_at', '>=', now()->subDays($days))
+            ->groupBy('date')
+            ->orderBy('date')
+            ->get()
+            ->keyBy('date');
+ 
+        // ── Remplir tous les jours (même ceux sans données) ─────────────
+        $labels       = [];
+        $regData      = [];
+        $matchData    = [];
+        $revenueData  = [];
+ 
+        for ($i = $days - 1; $i >= 0; $i--) {
+            $date       = now()->subDays($i)->toDateString();
+            $labels[]   = Carbon::parse($date)->format('d/m');
+            $regData[]  = $registrations->get($date)?->total ?? 0;
+            $matchData[]= $matchesByDay->get($date)?->total ?? 0;
+            $revenueData[] = $revenueByDay->get($date)?->total ?? 0;
+        }
+ 
+        // ── Répartition par université ───────────────────────────────────
+        $byUniversity = DB::table('profiles')
+            ->select('university', DB::raw('COUNT(*) as total'))
+            ->whereNotNull('university')
+            ->groupBy('university')
+            ->orderByDesc('total')
+            ->limit(8)
+            ->get();
+ 
+        // ── Répartition par UFR ──────────────────────────────────────────
+        $byUfr = DB::table('profiles')
+            ->select('ufr', DB::raw('COUNT(*) as total'))
+            ->whereNotNull('ufr')
+            ->groupBy('ufr')
+            ->orderByDesc('total')
+            ->get();
+ 
+        // ── KPIs globaux ─────────────────────────────────────────────────
+        $kpis = [
+            'total_users'       => DB::table('users')->count(),
+            'users_this_week'   => DB::table('users')->where('created_at', '>=', now()->subWeek())->count(),
+            'users_this_month'  => DB::table('users')->where('created_at', '>=', now()->startOfMonth())->count(),
+            'total_matches'     => DB::table('matches')->count(),
+            'matches_this_week' => DB::table('matches')->where('created_at', '>=', now()->subWeek())->count(),
+            'match_rate'        => DB::table('users')->count() > 0
+                ? round((DB::table('matches')->count() / DB::table('users')->count()) * 100, 1)
+                : 0,
+            'total_revenue'     => DB::table('payments')->where('status', 'completed')->sum('amount'),
+            'revenue_this_month'=> DB::table('payments')->where('status', 'completed')->where('created_at', '>=', now()->startOfMonth())->sum('amount'),
+            'paying_users'      => DB::table('payments')->where('status', 'completed')->distinct('user_id')->count('user_id'),
+            'women_count'       => DB::table('profiles')->where('gender', 'femme')->count(),
+            'men_count'         => DB::table('profiles')->where('gender', 'homme')->count(),
+            'boosted_now'       => DB::table('profiles')->where('boosted_until', '>', now())->count(),
+            'referrals_total'   => DB::table('referrals')->count(),
+            'referrals_rewarded'=> DB::table('referrals')->where('rewarded', true)->count(),
+        ];
+ 
+        return view('admin.analytics', compact(
+            'labels', 'regData', 'matchData', 'revenueData',
+            'byUniversity', 'byUfr', 'kpis', 'days'
+        ));
     }
 }

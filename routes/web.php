@@ -115,4 +115,5 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('/reports', [AdminController::class, 'reports'])->name('reports');
     Route::post('/reports/{id}/resolve', [AdminController::class, 'resolveReport'])->name('reports.resolve');
     Route::get('/payments', [AdminController::class, 'payments'])->name('payments');
+    Route::get('/analytics', [AdminController::class, 'analytics'])->name('admin.analytics');
 });

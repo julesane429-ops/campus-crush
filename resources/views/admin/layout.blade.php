@@ -1,5 +1,6 @@
 <!doctype html>
 <html lang="fr">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
@@ -8,51 +9,124 @@
     <script src="https://cdn.tailwindcss.com/3.4.17"></script>
     <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        * { font-family: 'Sora', sans-serif; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { background: #0c0a1a; }
-        .cc-mono { font-family: 'Space Mono', monospace; }
-        .cc-gradient-text { background: linear-gradient(135deg, #ff5e6c, #ff8a5c, #ffc145); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-
-        .admin-surface { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; }
-        .admin-card { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); }
-
-        /* Sidebar */
-        .sidebar { transition: transform 0.3s cubic-bezier(0.22,1,0.36,1); }
-        .sidebar-overlay { transition: opacity 0.3s ease; }
-
-        @media (max-width: 768px) {
-            .sidebar { transform: translateX(-100%); position: fixed; z-index: 50; }
-            .sidebar.open { transform: translateX(0); }
-            .sidebar-overlay.open { opacity: 1; pointer-events: auto; }
+        * {
+            font-family: 'Sora', sans-serif;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
         }
 
-        .nav-link { transition: all 0.2s ease; border-radius: 12px; }
-        .nav-link:hover, .nav-link.active { background: rgba(255,94,108,0.08); }
-        .nav-link.active { border-left: 3px solid #ff5e6c; }
+        body {
+            background: #0c0a1a;
+        }
+
+        .cc-mono {
+            font-family: 'Space Mono', monospace;
+        }
+
+        .cc-gradient-text {
+            background: linear-gradient(135deg, #ff5e6c, #ff8a5c, #ffc145);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .admin-surface {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 16px;
+        }
+
+        .admin-card {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        /* Sidebar */
+        .sidebar {
+            transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        .sidebar-overlay {
+            transition: opacity 0.3s ease;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+                position: fixed;
+                z-index: 50;
+            }
+
+            .sidebar.open {
+                transform: translateX(0);
+            }
+
+            .sidebar-overlay.open {
+                opacity: 1;
+                pointer-events: auto;
+            }
+        }
+
+        .nav-link {
+            transition: all 0.2s ease;
+            border-radius: 12px;
+        }
+
+        .nav-link:hover,
+        .nav-link.active {
+            background: rgba(255, 94, 108, 0.08);
+        }
+
+        .nav-link.active {
+            border-left: 3px solid #ff5e6c;
+        }
 
         /* Toast */
-        @keyframes slideDown { from { transform: translateY(-100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-        .toast { animation: slideDown 0.3s ease; }
+        @keyframes slideDown {
+            from {
+                transform: translateY(-100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .toast {
+            animation: slideDown 0.3s ease;
+        }
 
         /* Table responsive */
-        .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-        .table-wrap::-webkit-scrollbar { height: 3px; }
-        .table-wrap::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+        .table-wrap {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .table-wrap::-webkit-scrollbar {
+            height: 3px;
+        }
+
+        .table-wrap::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+        }
     </style>
 </head>
+
 <body class="text-white min-h-screen">
 
     {{-- Mobile header --}}
     <header class="md:hidden sticky top-0 z-40 flex items-center justify-between px-4 py-3" style="background: rgba(12,10,26,0.95); backdrop-filter: blur(20px); border-bottom: 1px solid rgba(255,255,255,0.05);">
         <button id="menu-toggle" class="p-2 rounded-xl hover:bg-white/5 active:scale-95 transition">
             <svg class="w-5 h-5 text-white/60" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                <path stroke-linecap="round" d="M4 6h16M4 12h16M4 18h16"/>
+                <path stroke-linecap="round" d="M4 6h16M4 12h16M4 18h16" />
             </svg>
         </button>
         <span class="text-sm font-bold cc-gradient-text">Admin Panel</span>
         <a href="{{ route('swipe') }}" class="p-2 rounded-xl hover:bg-white/5 transition">
             <svg class="w-5 h-5 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-                <path stroke-linecap="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                <path stroke-linecap="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
         </a>
     </header>
@@ -73,7 +147,9 @@
                     <p class="text-[9px] text-white/20 uppercase tracking-widest cc-mono">Admin Panel</p>
                 </div>
                 <button class="md:hidden ml-auto p-1.5 rounded-lg hover:bg-white/5" onclick="closeSidebar()">
-                    <svg class="w-4 h-4 text-white/30" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path stroke-linecap="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                    <svg class="w-4 h-4 text-white/30" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                        <path stroke-linecap="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
                 </button>
             </div>
 
@@ -81,6 +157,10 @@
             <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
                 <a href="{{ route('admin.dashboard') }}" class="nav-link flex items-center gap-3 px-3 py-2.5 text-sm {{ request()->routeIs('admin.dashboard') ? 'active text-white' : 'text-white/50' }}">
                     <span class="text-base">📊</span> Dashboard
+                </a>
+                <a href="{{ route('admin.analytics') }}" class="nav-link flex items-center gap-3 px-4 py-2.5 text-sm text-white/60 hover:text-white {{ request()->routeIs('admin.analytics') ? 'active text-white' : '' }}">
+                    <span>📊</span>
+                    <span>Analytics</span>
                 </a>
                 <a href="{{ route('admin.users') }}" class="nav-link flex items-center gap-3 px-3 py-2.5 text-sm {{ request()->routeIs('admin.users') ? 'active text-white' : 'text-white/50' }}">
                     <span class="text-base">👥</span> Utilisateurs
@@ -143,28 +223,29 @@
     </div>
 
     <script>
-    const sidebar = document.getElementById('sidebar');
-    const overlay = document.getElementById('sidebar-overlay');
-    const toggle = document.getElementById('menu-toggle');
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('sidebar-overlay');
+        const toggle = document.getElementById('menu-toggle');
 
-    if (toggle) {
-        toggle.addEventListener('click', () => {
-            sidebar.classList.add('open');
-            overlay.classList.add('open');
+        if (toggle) {
+            toggle.addEventListener('click', () => {
+                sidebar.classList.add('open');
+                overlay.classList.add('open');
+            });
+        }
+
+        function closeSidebar() {
+            sidebar.classList.remove('open');
+            overlay.classList.remove('open');
+        }
+
+        // Close on nav click (mobile)
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.addEventListener('click', () => {
+                if (window.innerWidth < 768) closeSidebar();
+            });
         });
-    }
-
-    function closeSidebar() {
-        sidebar.classList.remove('open');
-        overlay.classList.remove('open');
-    }
-
-    // Close on nav click (mobile)
-    document.querySelectorAll('.nav-link').forEach(link => {
-        link.addEventListener('click', () => {
-            if (window.innerWidth < 768) closeSidebar();
-        });
-    });
     </script>
 </body>
+
 </html>
