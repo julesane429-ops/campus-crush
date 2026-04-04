@@ -59,12 +59,6 @@ class SwipeController extends Controller
         }
 
         $hasFilters = !empty(array_filter($filters));
-        $cacheKey   = "profiles_for_{$user->id}";
-
-        if (!$hasFilters) {
-            $cached = Cache::get($cacheKey);
-            if ($cached) return $cached;
-        }
 
         $targetGender = $user->profile->gender === 'homme' ? 'femme' : 'homme';
 
@@ -114,10 +108,6 @@ class SwipeController extends Controller
                 'boosted'       => $profile->isBoosted(),
             ];
         })->values();
-
-        if (!$hasFilters) {
-            Cache::put($cacheKey, $result, now()->addMinutes(5));
-        }
 
         return $result;
     }
