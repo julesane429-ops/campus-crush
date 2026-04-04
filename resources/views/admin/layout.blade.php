@@ -175,6 +175,13 @@
                 <a href="{{ route('admin.payments') }}" class="nav-link flex items-center gap-3 px-3 py-2.5 text-sm {{ request()->routeIs('admin.payments') ? 'active text-white' : 'text-white/50' }}">
                     <span class="text-base">💰</span> Paiements
                 </a>
+                <a href="{{ route('admin.reviews') }}" class="nav-link flex items-center gap-3 px-3 py-2.5 text-sm {{ request()->routeIs('admin.reviews') ? 'active text-white' : 'text-white/50' }}">
+                    <span class="text-base">💬</span> Avis
+                    @php $pendingReviews = \App\Models\Review::where('status', 'pending')->count(); @endphp
+                    @if($pendingReviews > 0)
+                    <span class="ml-auto min-w-[20px] h-5 px-1.5 bg-[#ffc145]/20 text-[#ffc145] text-[10px] font-bold rounded-full flex items-center justify-center">{{ $pendingReviews }}</span>
+                    @endif
+                </a>
 
                 <div class="h-px bg-white/5 my-3"></div>
 
