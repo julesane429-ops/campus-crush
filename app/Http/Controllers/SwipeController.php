@@ -51,21 +51,30 @@ class SwipeController extends Controller
         ]);
     }
 
-    private function getProfiles(array $filters = [])
+     private function getProfiles(array $filters = [])
     {
         $user = Auth::user();
         if (!$user || !$user->profile || !$user->profile->gender) {
             return collect([]);
         }
-
+ 
+        // ✅ Fix perf : cache 5 minutes si pas de filtres actifs
+        $hasFilters = !empty(array_filter($filters));
+        $cacheKey   = "profiles_for_{$user->id}";
+ 
+        if (!$hasFilters) {
+            $cached = \Illuminate\Support\Facades\Cache::get($cacheKey);
+            if ($cached) return $cached;
+        }
+ 
         $targetGender = $user->profile->gender === 'homme' ? 'femme' : 'homme';
-
-        $liked = Like::where('user_id', $user->id)->pluck('liked_user_id');
-        $passed = Pass::where('user_id', $user->id)->pluck('passed_user_id');
+ 
+        $liked   = Like::where('user_id', $user->id)->pluck('liked_user_id');
+        $passed  = Pass::where('user_id', $user->id)->pluck('passed_user_id');
         $matched = Matche::forUser($user->id)->get()
             ->map(fn($m) => $m->user1_id === $user->id ? $m->user2_id : $m->user1_id);
         $excluded = $liked->merge($passed)->merge($matched)->unique();
-
+ 
         $query = User::where('id', '!=', $user->id)
             ->whereNotIn('id', $excluded)
             ->whereHas('profile', function ($q) use ($targetGender, $filters) {
@@ -74,14 +83,13 @@ class SwipeController extends Controller
                 if (!empty($filters['promotion'])) $q->where('promotion', $filters['promotion']);
                 if (!empty($filters['age_min'])) $q->where('age', '>=', (int) $filters['age_min']);
                 if (!empty($filters['age_max'])) $q->where('age', '<=', (int) $filters['age_max']);
-                // Filtre multi-université
                 if (!empty($filters['university_id'])) {
                     $q->where('university_id', (int) $filters['university_id']);
                 }
             })
             ->with('profile.universityModel')
             ->limit(30);
-
+ 
         $profiles = $query->get()
             ->filter(fn($c) => $c->profile !== null)
             ->sortByDesc(fn($c) => [
@@ -89,27 +97,35 @@ class SwipeController extends Controller
                 $this->compatibility->calculate($user, $c->profile),
             ])
             ->take(10);
-
-        return $profiles->map(function ($candidate) use ($user) {
+ 
+        $result = $profiles->map(function ($candidate) use ($user) {
             $profile = $candidate->profile;
             return [
-                'id' => $candidate->id,
-                'name' => $candidate->name ?? '',
-                'age' => $profile->age ?? '',
-                'major' => $profile->ufr ?? '',
-                'promotion' => $profile->promotion ?? '',
-                'year' => $profile->level ?? '',
-                'bio' => e($profile->bio ?? ''),
+                'id'            => $candidate->id,
+                'name'          => $candidate->name ?? '',
+                'age'           => $profile->age ?? '',
+                'major'         => $profile->ufr ?? '',
+                'promotion'     => $profile->promotion ?? '',
+                'year'          => $profile->level ?? '',
+                'bio'           => e($profile->bio ?? ''),
                 'compatibility' => $this->compatibility->calculate($user, $profile),
-                'tags' => $profile->interests_array,
-                'photo' => $profile->photo_url,
-                'university' => $profile->university_name,
-                'gradient' => 'from-rose-300 to-purple-400',
-                'badge'   => $profile->badge,
-                'boosted' => $profile->isBoosted(),
+                'tags'          => $profile->interests_array,
+                'photo'         => $profile->photo_url,
+                'university'    => $profile->university_name,
+                'gradient'      => 'from-rose-300 to-purple-400',
+                'badge'         => $profile->badge,
+                'boosted'       => $profile->isBoosted(),
             ];
         })->values();
+ 
+        // Mettre en cache seulement si pas de filtres
+        if (!$hasFilters) {
+            \Illuminate\Support\Facades\Cache::put($cacheKey, $result, now()->addMinutes(5));
+        }
+ 
+        return $result;
     }
+ 
 
     public function loadMoreProfiles(Request $request)
     {
@@ -120,41 +136,41 @@ class SwipeController extends Controller
     public function like(int $id)
     {
         $user = Auth::user();
-
+ 
         if ($user->id == $id) return response()->json(['error' => 'Action invalide'], 400);
-
+ 
         $targetUser = User::with('profile')->find($id);
         if (!$targetUser || !$targetUser->profile) return response()->json(['error' => 'Introuvable'], 404);
         if ($user->profile->gender === $targetUser->profile->gender) return response()->json(['error' => 'Invalide'], 400);
-
+ 
         Like::firstOrCreate(['user_id' => $user->id, 'liked_user_id' => $id]);
-
+ 
+        // ✅ Fix perf : invalider le cache getFavoriteUfr après un like
+        $this->compatibility->invalidateFavoriteUfrCache($user->id);
+ 
         $mutualLike = Like::where('user_id', $id)->where('liked_user_id', $user->id)->exists();
-
+ 
         if ($mutualLike) {
             $match = Matche::firstOrCreate([
                 'user1_id' => min($user->id, $id),
                 'user2_id' => max($user->id, $id),
             ]);
-
-            // Push notification
+ 
             app(WebPushService::class)->notifyNewMatch($targetUser, Auth::user()->name);
-
-            // 🔔 Notifications pour les deux utilisateurs
+ 
             $user->notify(new NewMatchNotification($match, $targetUser));
             $targetUser->notify(new NewMatchNotification($match, $user));
-
-            // 🔥 Broadcast en temps réel
+ 
             try {
                 broadcast(new NewMatch($match, $user));
                 broadcast(new NewMatch($match, $targetUser));
             } catch (\Exception $e) {
                 // Reverb pas lancé ? On continue quand même
             }
-
+ 
             return response()->json(['match' => true, 'match_id' => $match->id]);
         }
-
+ 
         return response()->json(['match' => false]);
     }
 

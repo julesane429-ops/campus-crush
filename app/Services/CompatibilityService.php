@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\User;
 use App\Models\Like;
 use App\Models\Profile;
+use Illuminate\Support\Facades\Cache;
 
 class CompatibilityService
 {
@@ -15,7 +16,7 @@ class CompatibilityService
         }
 
         $myProfile = $user->profile;
-        $score = 0;
+        $score     = 0;
 
         if ($myProfile->ufr && $myProfile->ufr === $candidateProfile->ufr) {
             $score += 40;
@@ -38,37 +39,54 @@ class CompatibilityService
             $score += 10;
         }
 
+        // ✅ Fix perf : getFavoriteUfr mis en cache 30 minutes
         $favoriteUfr = $this->getFavoriteUfr($user->id);
         if ($favoriteUfr && $candidateProfile->ufr === $favoriteUfr) {
             $score += 10;
         }
 
         if ($myProfile->interests && $candidateProfile->interests) {
-            $myInterests = array_map('trim', explode(',', strtolower($myProfile->interests)));
+            $myInterests   = array_map('trim', explode(',', strtolower($myProfile->interests)));
             $theirInterests = array_map('trim', explode(',', strtolower($candidateProfile->interests)));
-            $common = array_intersect($myInterests, $theirInterests);
-            $score += count($common) * 3;
+            $common        = array_intersect($myInterests, $theirInterests);
+            $score        += count($common) * 3;
         }
 
         return min($score, 100);
     }
 
+    /**
+     * ✅ Fix perf : cache 30 minutes pour éviter de recharger
+     * tous les likes + profils à chaque calcul de compatibilité.
+     * Le cache est invalidé automatiquement quand l'utilisateur like.
+     */
     private function getFavoriteUfr(int $userId): ?string
     {
-        $likedProfiles = Like::where('user_id', $userId)
-            ->with('likedUser.profile')
-            ->get();
+        return Cache::remember("favorite_ufr_{$userId}", now()->addMinutes(30), function () use ($userId) {
+            $likedProfiles = Like::where('user_id', $userId)
+                ->with('likedUser.profile')
+                ->get();
 
-        if ($likedProfiles->isEmpty()) {
-            return null;
-        }
+            if ($likedProfiles->isEmpty()) {
+                return null;
+            }
 
-        return $likedProfiles
-            ->pluck('likedUser.profile.ufr')
-            ->filter()
-            ->countBy()
-            ->sortDesc()
-            ->keys()
-            ->first();
+            return $likedProfiles
+                ->pluck('likedUser.profile.ufr')
+                ->filter()
+                ->countBy()
+                ->sortDesc()
+                ->keys()
+                ->first();
+        });
+    }
+
+    /**
+     * Invalider le cache quand l'utilisateur like quelqu'un.
+     * À appeler dans SwipeController::like()
+     */
+    public function invalidateFavoriteUfrCache(int $userId): void
+    {
+        Cache::forget("favorite_ufr_{$userId}");
     }
 }
