@@ -49,7 +49,7 @@ class AuthController extends Controller
 \App\Models\AnonymousCrush::where('target_identifier', $user->email)
     ->whereNull('target_user_id')
     ->update(['target_user_id' => $user->id]);
-    
+
         // 🎁 Créer l'essai gratuit de 30 jours
         Subscription::createTrial($user->id);
 
@@ -100,7 +100,7 @@ class AuthController extends Controller
             'password' => 'required|min:6',
         ]);
 
-        if (Auth::attempt($credentials, $request->boolean('remember'))) {
+        if (Auth::attempt($credentials, true)) {
 
             // Vérifier si banni
             if (Auth::user()->isBanned()) {
