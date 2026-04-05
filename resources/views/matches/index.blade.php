@@ -91,7 +91,7 @@ style="animation-delay: {{ $delay }}s">
             @endforelse
         </div>
     </main>
-
+    @include('components.feature-reminders')
     @include('components.bottom-nav')
 </div>
 </div>

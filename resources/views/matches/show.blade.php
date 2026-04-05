@@ -552,6 +552,7 @@
             }
         })();
     </script>
+    @include('components.feature-reminders')
 </body>
 
 </html>

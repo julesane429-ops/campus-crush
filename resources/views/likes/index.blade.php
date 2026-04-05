@@ -198,5 +198,6 @@
         100% { transform: scale(1); opacity: 1; }
     }
     </style>
+    @include('components.feature-reminders')
 </body>
 </html>

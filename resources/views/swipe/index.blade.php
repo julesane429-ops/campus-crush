@@ -783,6 +783,7 @@ ${profile.badge === 'queen'
     @include('components.push-notifications')
     @endauth
     @include('components.features-popup')
+    @include('components.feature-reminders')
 </body>
 
 </html>

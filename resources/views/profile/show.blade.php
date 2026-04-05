@@ -443,7 +443,7 @@
             }, 4000);
         }
     </script>
-
+    @include('components.feature-reminders')
     @include('components.bottom-nav')
 </body>
 
