@@ -384,14 +384,14 @@
         </div>
     </div>
     <script>
-        const profileUrl = '{{ url()->current() }}';
+        const publicUrl = '{{ route("public.profile", auth()->user()->slug ?? "profil") }}';
         const profileName = '{{ e($user->name) }}';
         const appName = 'Campus Crush';
 
         function shareWhatsApp() {
             const msg = encodeURIComponent(
-                '👋 Salut ! Je suis sur Campus Crush, l\'appli de rencontres pour étudiants 🎓💘\n' +
-                'Rejoins-moi : https://campus-crush-h9df.onrender.com'
+                '👋 Salut ! Voici mon profil sur Campus Crush, l\'appli de rencontres pour étudiants 🎓💘\n' +
+                'Rejoins-moi : ' + publicUrl
             );
             window.open('https://wa.me/?text=' + msg, '_blank');
         }
@@ -399,13 +399,12 @@
         function shareNative() {
             if (navigator.share) {
                 navigator.share({
-                    title: appName,
+                    title: profileName + ' sur Campus Crush',
                     text: '👋 ' + profileName + ' est sur Campus Crush ! Rejoins l\'appli de rencontres étudiantes 🎓💘',
-                    url: 'https://campus-crush-h9df.onrender.com',
+                    url: publicUrl,
                 });
             } else {
-                // Fallback : copier le lien
-                navigator.clipboard?.writeText('https://campus-crush-h9df.onrender.com')
+                navigator.clipboard?.writeText(publicUrl)
                     .then(() => alert('Lien copié !'))
                     .catch(() => {});
             }

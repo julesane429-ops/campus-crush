@@ -36,6 +36,15 @@ class AuthController extends Controller
             'password' => Hash::make($validated['password']),
         ]);
 
+        // Générer le slug du profil public
+        $baseSlug = \Illuminate\Support\Str::slug($user->name);
+        $slug = $baseSlug;
+        $i = 1;
+        while (User::where('slug', $slug)->where('id', '!=', $user->id)->exists()) {
+            $slug = $baseSlug . '-' . $i++;
+        }
+        $user->update(['slug' => $slug]);
+
         // 🎁 Créer l'essai gratuit de 30 jours
         Subscription::createTrial($user->id);
 

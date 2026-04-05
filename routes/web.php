@@ -17,6 +17,15 @@ Route::get('/install', fn() => view('install'))->name('install');
 Route::get('/terms', fn() => view('legal.terms'))->name('legal.terms');
 Route::get('/privacy', fn() => view('legal.privacy'))->name('legal.privacy');
 Route::get('/safety', fn() => view('legal.safety'))->name('legal.safety');
+// Profil public partageable
+Route::get('/u/{slug}', function (string $slug) {
+    $user = \App\Models\User::where('slug', $slug)->with('profile.universityModel')->firstOrFail();
+    $profile = $user->profile;
+    if (!$profile) abort(404);
+    $matchesCount = \App\Models\Matche::forUser($user->id)->count();
+    $likesCount = \App\Models\Like::where('liked_user_id', $user->id)->count();
+    return view('public-profile', compact('user', 'profile', 'matchesCount', 'likesCount'));
+})->name('public.profile');
 
 // ── Auth ──
 Route::middleware('guest')->group(function () {
@@ -72,8 +81,8 @@ Route::middleware('auth')->group(function () {
     })->name('user.status');
 
     // Avis
-Route::post('/review', [App\Http\Controllers\ReviewController::class, 'store'])->name('review.store');
-Route::delete('/review', [App\Http\Controllers\ReviewController::class, 'destroy'])->name('review.destroy');
+    Route::post('/review', [App\Http\Controllers\ReviewController::class, 'store'])->name('review.store');
+    Route::delete('/review', [App\Http\Controllers\ReviewController::class, 'destroy'])->name('review.destroy');
 });
 
 // ── Routes avec abonnement requis ──
@@ -122,8 +131,8 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('/analytics', [AdminController::class, 'analytics'])->name('analytics');
 
     Route::get('/reviews', [AdminController::class, 'reviews'])->name('reviews');
-Route::post('/reviews/{id}/approve', [AdminController::class, 'approveReview'])->name('reviews.approve');
-Route::post('/reviews/{id}/reject', [AdminController::class, 'rejectReview'])->name('reviews.reject');
-Route::post('/reviews/{id}/feature', [AdminController::class, 'featureReview'])->name('reviews.feature');
-Route::delete('/reviews/{id}', [AdminController::class, 'deleteReview'])->name('reviews.delete');
+    Route::post('/reviews/{id}/approve', [AdminController::class, 'approveReview'])->name('reviews.approve');
+    Route::post('/reviews/{id}/reject', [AdminController::class, 'rejectReview'])->name('reviews.reject');
+    Route::post('/reviews/{id}/feature', [AdminController::class, 'featureReview'])->name('reviews.feature');
+    Route::delete('/reviews/{id}', [AdminController::class, 'deleteReview'])->name('reviews.delete');
 });

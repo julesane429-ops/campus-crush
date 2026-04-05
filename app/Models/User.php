@@ -21,7 +21,8 @@ class User extends Authenticatable
         'referral_code', 
         'referred_by',
         'streak_days',
-        'last_login_date',   
+        'last_login_date',
+        'slug',   
     ];
     protected $hidden = [
         'password',
