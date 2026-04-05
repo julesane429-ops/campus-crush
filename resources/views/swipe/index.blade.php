@@ -782,6 +782,7 @@ ${profile.badge === 'queen'
     @auth
     @include('components.push-notifications')
     @endauth
+    @include('components.features-popup')
 </body>
 
 </html>
