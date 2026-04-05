@@ -19,6 +19,13 @@
         <form method="POST" action="{{ route('profile.update') }}" enctype="multipart/form-data" class="space-y-5">
             @csrf @method('PATCH')
 
+            {{-- Nom --}}
+            <div>
+                <label class="text-xs text-white/40 uppercase tracking-wider mb-2 block">Prénom / Nom</label>
+                <input type="text" name="name" value="{{ auth()->user()->name }}" required maxlength="255" class="cc-input">
+            </div>
+
+            {{-- Photo --}}
             <div>
                 <label class="text-xs text-white/40 uppercase tracking-wider mb-2 block">Photo</label>
                 <input type="file" name="photo" id="photo" accept="image/*" class="cc-input text-sm file:mr-3 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-xs file:bg-[#ff5e6c]/20 file:text-[#ff5e6c]">
@@ -57,7 +64,7 @@
             <div>
                 <label class="text-xs text-white/40 uppercase tracking-wider mb-2 block">UFR / Département</label>
                 <select name="ufr" required class="cc-select">
-                    @foreach(['SAT','SJP','S2ATA','LSH','SEFS','Sciences','Lettres','Droit','Économie','Médecine','Info','Autre'] as $u)
+                    @foreach(['SAT','SJP','S2ATA','LSH','SEFS','SEG','Sciences','Lettres','Droit','Économie','Médecine','Info','Autre'] as $u)
                     <option value="{{ $u }}" {{ $profile->ufr==$u?'selected':'' }}>{{ $u }}</option>
                     @endforeach
                 </select>
@@ -71,7 +78,7 @@
             <div>
                 <label class="text-xs text-white/40 uppercase tracking-wider mb-3 block">Niveau</label>
                 <div class="flex flex-wrap gap-2">
-                    @foreach(['L1','L2','L3','M1','M2'] as $l)
+                    @foreach(['L1','L2','L3','M1','M2','D1','D2','D3'] as $l)
                     <button type="button" data-level="{{ $l }}" class="level-btn cc-tag {{ $profile->level==$l ? 'active' : '' }}">{{ $l }}</button>
                     @endforeach
                 </div>

@@ -44,7 +44,7 @@ class ProfileController extends Controller
             'age'            => 'required|integer|min:17|max:60',
             'gender'         => 'required|in:homme,femme',
             'ufr'            => 'required|string|max:20',
-            'level'          => 'required|string|in:L1,L2,L3,M1,M2',
+            'level'          => 'required|string|in:L1,L2,L3,M1,M2,D1,D2,D3',
             'bio'            => 'required|string|max:200',
             'promotion'      => 'nullable|string|max:10',
             'photo'          => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
@@ -182,11 +182,26 @@ class ProfileController extends Controller
         $profile = $user->profile;
         if (!$profile) return redirect()->route('profile.create');
 
+        // Modifier le nom si fourni
+        if ($request->filled('name')) {
+            $request->validate(['name' => 'required|string|max:255']);
+            $user->update(['name' => $request->name]);
+
+            // Mettre à jour le slug
+            $baseSlug = \Illuminate\Support\Str::slug($request->name);
+            $slug = $baseSlug;
+            $i = 1;
+            while (\App\Models\User::where('slug', $slug)->where('id', '!=', $user->id)->exists()) {
+                $slug = $baseSlug . '-' . $i++;
+            }
+            $user->update(['slug' => $slug]);
+        }
+
         $validated = $request->validate([
             'age'            => 'required|integer|min:17|max:60',
             'gender'         => 'required|in:homme,femme',
             'ufr'            => 'required|string|max:20',
-            'level'          => 'required|string|in:L1,L2,L3,M1,M2',
+            'level'          => 'required|string|in:L1,L2,L3,M1,M2,D1,D2,D3',
             'bio'            => 'nullable|string|max:200',
             'promotion'      => 'nullable|string|max:10',
             'photo'          => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',

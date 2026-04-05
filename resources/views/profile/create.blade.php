@@ -56,7 +56,7 @@
                 <label class="text-xs text-white/40 uppercase tracking-wider mb-2 block">UFR / Département</label>
                 <select name="ufr" required class="cc-select">
                     <option value="">Choisir</option>
-                    @foreach(['SAT','SJP','S2ATA','LSH','SEFS','Sciences','Lettres','Droit','Économie','Médecine','Info','Autre'] as $u)
+                    @foreach(['SAT','SJP','S2ATA','LSH','SEFS','SEG','Sciences','Lettres','Droit','Économie','Médecine','Info','Autre'] as $u)
                     <option value="{{ $u }}">{{ $u }}</option>
                     @endforeach
                 </select>
@@ -72,7 +72,7 @@
             <div>
                 <label class="text-xs text-white/40 uppercase tracking-wider mb-3 block">Niveau</label>
                 <div class="flex flex-wrap gap-2">
-                    @foreach(['L1','L2','L3','M1','M2'] as $l)
+                    @foreach(['L1','L2','L3','M1','M2','D1','D2','D3'] as $l)
                     <button type="button" data-level="{{ $l }}" class="level-btn cc-tag">{{ $l }}</button>
                     @endforeach
                 </div>
