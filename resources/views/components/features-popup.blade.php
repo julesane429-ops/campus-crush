@@ -5,7 +5,7 @@
     Pour afficher à nouveau lors d'une prochaine feature, incrémente VERSION.
 --}}
 
-@php $VERSION = '3'; @endphp
+@php $VERSION = '4'; @endphp
 
 <div id="features-overlay" style="
     display: none;
@@ -41,7 +41,7 @@
             display:flex; align-items:center; justify-content:center;
             transition:background 0.2s;
         " onmouseenter="this.style.background='rgba(255,255,255,0.14)'"
-           onmouseleave="this.style.background='rgba(255,255,255,0.07)'">✕</button>
+            onmouseleave="this.style.background='rgba(255,255,255,0.07)'">✕</button>
 
         {{-- Slides --}}
         <div id="features-slides" style="overflow:hidden;">
@@ -153,9 +153,9 @@
 
                     <div style="space-y:0; margin-bottom:20px;">
                         @foreach([
-                            ['1', '🟠', 'Choisis ton moyen de paiement', 'Orange Money, Wave ou Free Money — entre ton numéro de téléphone'],
-                            ['2', '📱', 'Confirme sur ton téléphone', 'Tu reçois une notification ou un code USSD à valider directement sur ton téléphone'],
-                            ['3', '✅', 'Accès immédiat', 'Dès la confirmation, ton abonnement ou boost est activé automatiquement'],
+                        ['1', '🟠', 'Choisis ton moyen de paiement', 'Orange Money, Wave ou Free Money — entre ton numéro de téléphone'],
+                        ['2', '📱', 'Confirme sur ton téléphone', 'Tu reçois une notification ou un code USSD à valider directement sur ton téléphone'],
+                        ['3', '✅', 'Accès immédiat', 'Dès la confirmation, ton abonnement ou boost est activé automatiquement'],
                         ] as [$num, $icon, $title, $desc])
                         <div style="display:flex; gap:12px; align-items:flex-start; padding:10px 0; border-bottom:1px solid rgba(255,255,255,0.05);">
                             <div style="width:28px; height:28px; border-radius:50%; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; background:rgba(255,94,108,0.15); color:#ff5e6c;">{{ $num }}</div>
@@ -235,7 +235,52 @@
                         margin-bottom:10px;
                     ">Voir mon profil public →</a>
                 </div>
+                {{-- ══ SLIDE 5 : Crush Anonyme ══ --}}
+                <div class="feat-slide" style="min-width:100%; padding:32px 24px 24px;">
+                    <div style="text-align:center; margin-bottom:20px;">
+                        <div style="font-size:48px; margin-bottom:12px;">👀</div>
+                        <div style="font-size:11px; font-weight:700; letter-spacing:0.10em; margin-bottom:6px;
+            background:linear-gradient(135deg,#ff5e6c,#ffc145);
+            -webkit-background-clip:text; -webkit-text-fill-color:transparent;">
+                            NOUVEAUTÉ — CRUSH ANONYME
+                        </div>
+                        <h2 style="font-size:20px; font-weight:800; color:#fff; margin-bottom:8px; line-height:1.3;">
+                            Dis-lui que tu l'aimes<br>sans te dévoiler
+                        </h2>
+                        <p style="font-size:13px; color:rgba(255,255,255,0.45); line-height:1.6;">
+                            Envoie un crush anonyme à quelqu'un via son <span style="color:#fff; font-weight:600;">email ou numéro</span>.
+                            La personne reçoit "Quelqu'un de ton université a un crush sur toi" <strong style="color:#fff;">sans savoir que c'est toi</strong> 👀
+                        </p>
+                    </div>
 
+                    <div style="background:rgba(255,94,108,0.07); border:1px solid rgba(255,94,108,0.18); border-radius:16px; padding:14px 16px; margin-bottom:20px;">
+                        <div style="display:flex; gap:12px; align-items:flex-start; margin-bottom:10px;">
+                            <span style="font-size:16px; flex-shrink:0;">💌</span>
+                            <p style="font-size:12px; color:rgba(255,255,255,0.55); line-height:1.5;">Entre l'email ou le numéro de ton crush — il/elle reçoit un message mystérieux</p>
+                        </div>
+                        <div style="display:flex; gap:12px; align-items:flex-start; margin-bottom:10px;">
+                            <span style="font-size:16px; flex-shrink:0;">🤫</span>
+                            <p style="font-size:12px; color:rgba(255,255,255,0.55); line-height:1.5;">Ton identité reste secrète — seul un indice (université) est donné</p>
+                        </div>
+                        <div style="display:flex; gap:12px; align-items:flex-start; margin-bottom:10px;">
+                            <span style="font-size:16px; flex-shrink:0;">👁</span>
+                            <p style="font-size:12px; color:rgba(255,255,255,0.55); line-height:1.5;">La personne peut choisir de <strong style="color:#ff8a8a;">révéler</strong> qui l'a crushé</p>
+                        </div>
+                        <div style="display:flex; gap:12px; align-items:flex-start;">
+                            <span style="font-size:16px; flex-shrink:0;">🔥</span>
+                            <p style="font-size:12px; color:rgba(255,255,255,0.55); line-height:1.5;">Pas encore inscrit(e) ? Le crush l'attend à l'inscription !</p>
+                        </div>
+                    </div>
+
+                    <a href="{{ route('crush.index') }}" onclick="closeFeatures(true)" style="
+        display:block; width:100%; padding:13px; border-radius:14px;
+        text-align:center; text-decoration:none;
+        font-size:13px; font-weight:700; color:#fff;
+        background:linear-gradient(135deg,#ff5e6c,#ffc145);
+        box-shadow:0 6px 24px rgba(255,94,108,0.25);
+        margin-bottom:10px;
+    ">Envoyer un crush anonyme 💘</a>
+                </div>
             </div>{{-- /slides-track --}}
         </div>
 
@@ -247,6 +292,7 @@
                 <div class="feat-dot" onclick="goToSlide(1)" style="width:6px; height:6px; border-radius:3px; cursor:pointer; transition:all 0.3s; background:rgba(255,255,255,0.20);"></div>
                 <div class="feat-dot" onclick="goToSlide(2)" style="width:6px; height:6px; border-radius:3px; cursor:pointer; transition:all 0.3s; background:rgba(255,255,255,0.20);"></div>
                 <div class="feat-dot" onclick="goToSlide(3)" style="width:6px; height:6px; border-radius:3px; cursor:pointer; transition:all 0.3s; background:rgba(255,255,255,0.20);"></div>
+                <div class="feat-dot" onclick="goToSlide(4)" style="width:6px; height:6px; border-radius:3px; cursor:pointer; transition:all 0.3s; background:rgba(255,255,255,0.20);"></div>
             </div>
 
             {{-- Boutons nav --}}
@@ -256,117 +302,126 @@
                     background:rgba(255,255,255,0.07); color:rgba(255,255,255,0.50);
                     font-size:12px; font-weight:600; font-family:inherit; transition:background 0.2s;
                 " onmouseenter="this.style.background='rgba(255,255,255,0.12)'"
-                   onmouseleave="this.style.background='rgba(255,255,255,0.07)'">← Retour</button>
+                    onmouseleave="this.style.background='rgba(255,255,255,0.07)'">← Retour</button>
 
                 <button id="feat-next" onclick="nextSlide()" style="
                     padding:8px 18px; border-radius:10px; border:none; cursor:pointer;
                     background:rgba(255,255,255,0.08); color:rgba(255,255,255,0.70);
                     font-size:12px; font-weight:600; font-family:inherit; transition:background 0.2s;
                 " onmouseenter="this.style.background='rgba(255,255,255,0.14)'"
-                   onmouseleave="this.style.background='rgba(255,255,255,0.08)'">Suivant →</button>
+                    onmouseleave="this.style.background='rgba(255,255,255,0.08)'">Suivant →</button>
             </div>
         </div>
     </div>
 </div>
 
 <style>
-@keyframes featIn {
-    from { opacity:0; transform:scale(0.88) translateY(20px); }
-    to   { opacity:1; transform:scale(1) translateY(0); }
-}
+    @keyframes featIn {
+        from {
+            opacity: 0;
+            transform: scale(0.88) translateY(20px);
+        }
+
+        to {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+        }
+    }
 </style>
 
 <script>
-(function () {
-    const VERSION    = @json($VERSION);
-    const STORAGE_KEY = 'cc_features_v' + VERSION;
+    (function() {
+        const VERSION = @json($VERSION);
+        const STORAGE_KEY = 'cc_features_v' + VERSION;
 
-    // Afficher seulement si pas encore vu pour cette version
-    if (!localStorage.getItem(STORAGE_KEY)) {
-        setTimeout(() => {
-            const overlay = document.getElementById('features-overlay');
-            if (overlay) overlay.style.display = 'flex';
-        }, 1200); // délai pour laisser la page charger
-    }
+        // Afficher seulement si pas encore vu pour cette version
+        if (!localStorage.getItem(STORAGE_KEY)) {
+            setTimeout(() => {
+                const overlay = document.getElementById('features-overlay');
+                if (overlay) overlay.style.display = 'flex';
+            }, 1200); // délai pour laisser la page charger
+        }
 
-    // Fermer en cliquant sur l'overlay (hors carte)
-    const overlay = document.getElementById('features-overlay');
-    if (overlay) {
-        overlay.addEventListener('click', function (e) {
-            if (e.target === this) closeFeatures();
+        // Fermer en cliquant sur l'overlay (hors carte)
+        const overlay = document.getElementById('features-overlay');
+        if (overlay) {
+            overlay.addEventListener('click', function(e) {
+                if (e.target === this) closeFeatures();
+            });
+        }
+    })();
+
+    let currentSlide = 0;
+    const totalSlides = 5;
+
+    function updateSlideUI() {
+        const track = document.getElementById('slides-track');
+        if (track) track.style.transform = `translateX(-${currentSlide * 100}%)`;
+
+        // Dots
+        document.querySelectorAll('.feat-dot').forEach((dot, i) => {
+            if (i === currentSlide) {
+                dot.style.width = '20px';
+                dot.style.background = 'linear-gradient(135deg,#ff5e6c,#a855f7)';
+            } else {
+                dot.style.width = '6px';
+                dot.style.background = 'rgba(255,255,255,0.20)';
+            }
         });
-    }
-})();
 
-let currentSlide = 0;
-const totalSlides = 4;
-
-function updateSlideUI() {
-    const track = document.getElementById('slides-track');
-    if (track) track.style.transform = `translateX(-${currentSlide * 100}%)`;
-
-    // Dots
-    document.querySelectorAll('.feat-dot').forEach((dot, i) => {
-        if (i === currentSlide) {
-            dot.style.width = '20px';
-            dot.style.background = 'linear-gradient(135deg,#ff5e6c,#a855f7)';
-        } else {
-            dot.style.width = '6px';
-            dot.style.background = 'rgba(255,255,255,0.20)';
-        }
-    });
-
-    // Boutons
-    const prev = document.getElementById('feat-prev');
-    const next = document.getElementById('feat-next');
-    if (prev) prev.style.display = currentSlide > 0 ? 'block' : 'none';
-    if (next) {
-        if (currentSlide === totalSlides - 1) {
-            next.textContent = 'Terminer ✓';
-            next.onclick = () => closeFeatures(true);
-        } else {
-            next.textContent = 'Suivant →';
-            next.onclick = nextSlide;
+        // Boutons
+        const prev = document.getElementById('feat-prev');
+        const next = document.getElementById('feat-next');
+        if (prev) prev.style.display = currentSlide > 0 ? 'block' : 'none';
+        if (next) {
+            if (currentSlide === totalSlides - 1) {
+                next.textContent = 'Terminer ✓';
+                next.onclick = () => closeFeatures(true);
+            } else {
+                next.textContent = 'Suivant →';
+                next.onclick = nextSlide;
+            }
         }
     }
-}
 
-function goToSlide(index) {
-    currentSlide = index;
-    updateSlideUI();
-}
-
-function nextSlide() {
-    if (currentSlide < totalSlides - 1) {
-        currentSlide++;
+    function goToSlide(index) {
+        currentSlide = index;
         updateSlideUI();
     }
-}
 
-function prevSlide() {
-    if (currentSlide > 0) {
-        currentSlide--;
-        updateSlideUI();
-    }
-}
-
-function closeFeatures(permanent = false) {
-    const overlay = document.getElementById('features-overlay');
-    const card    = document.getElementById('features-card');
-
-    if (card) {
-        card.style.transition = 'opacity 0.25s ease, transform 0.25s ease';
-        card.style.opacity    = '0';
-        card.style.transform  = 'scale(0.92) translateY(10px)';
-    }
-    if (overlay) {
-        overlay.style.transition = 'opacity 0.3s ease';
-        overlay.style.opacity    = '0';
-        setTimeout(() => { overlay.style.display = 'none'; }, 300);
+    function nextSlide() {
+        if (currentSlide < totalSlides - 1) {
+            currentSlide++;
+            updateSlideUI();
+        }
     }
 
-    // Mémoriser que l'utilisateur a vu cette version
-    const VERSION = @json($VERSION);
-    localStorage.setItem('cc_features_v' + VERSION, '1');
-}
+    function prevSlide() {
+        if (currentSlide > 0) {
+            currentSlide--;
+            updateSlideUI();
+        }
+    }
+
+    function closeFeatures(permanent = false) {
+        const overlay = document.getElementById('features-overlay');
+        const card = document.getElementById('features-card');
+
+        if (card) {
+            card.style.transition = 'opacity 0.25s ease, transform 0.25s ease';
+            card.style.opacity = '0';
+            card.style.transform = 'scale(0.92) translateY(10px)';
+        }
+        if (overlay) {
+            overlay.style.transition = 'opacity 0.3s ease';
+            overlay.style.opacity = '0';
+            setTimeout(() => {
+                overlay.style.display = 'none';
+            }, 300);
+        }
+
+        // Mémoriser que l'utilisateur a vu cette version
+        const VERSION = @json($VERSION);
+        localStorage.setItem('cc_features_v' + VERSION, '1');
+    }
 </script>
