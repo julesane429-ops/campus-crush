@@ -45,6 +45,11 @@ class AuthController extends Controller
         }
         $user->update(['slug' => $slug]);
 
+        // Lier les crushes anonymes reçus avant l'inscription
+\App\Models\AnonymousCrush::where('target_identifier', $user->email)
+    ->whereNull('target_user_id')
+    ->update(['target_user_id' => $user->id]);
+    
         // 🎁 Créer l'essai gratuit de 30 jours
         Subscription::createTrial($user->id);
 

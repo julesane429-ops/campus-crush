@@ -116,6 +116,11 @@ Route::middleware(['auth', 'subscription'])->group(function () {
     Route::get('/boost/success', [App\Http\Controllers\BoostController::class, 'success'])->name('boost.success');
 
     Route::get('/referral', [App\Http\Controllers\ReferralController::class, 'index'])->name('referral.index');
+
+    // Crush anonyme
+Route::get('/crush', [App\Http\Controllers\AnonymousCrushController::class, 'index'])->name('crush.index');
+Route::post('/crush/send', [App\Http\Controllers\AnonymousCrushController::class, 'send'])->name('crush.send');
+Route::post('/crush/{id}/reveal', [App\Http\Controllers\AnonymousCrushController::class, 'reveal'])->name('crush.reveal');
 });
 
 // ── Panel Admin ──

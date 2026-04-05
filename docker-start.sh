@@ -22,5 +22,8 @@ echo "Starting Campus Crush on port ${PORT:-8000}..."
 # Option 1: PHP built-in (simple mais mono-thread)
 # php artisan serve --host=0.0.0.0 --port=${PORT:-8000}
 
+# Scheduler en arrière-plan pour le match du jour
+(while true; do php artisan schedule:run >> /dev/null 2>&1; sleep 60; done) &
+
 # Option 2: PHP built-in avec PHP_CLI_SERVER_WORKERS (PHP 8.4+)
 PHP_CLI_SERVER_WORKERS=4 php -S 0.0.0.0:${PORT:-8000} -t public/
