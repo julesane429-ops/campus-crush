@@ -5,7 +5,7 @@
     Pour afficher à nouveau lors d'une prochaine feature, incrémente VERSION.
 --}}
 
-@php $VERSION = '2'; @endphp
+@php $VERSION = '3'; @endphp
 
 <div id="features-overlay" style="
     display: none;
@@ -187,6 +187,55 @@
                     ">J'ai compris, on y va ! 🚀</button>
                 </div>
 
+                {{-- ══ SLIDE 4 : Profil public partageable ══ --}}
+                <div class="feat-slide" style="min-width:100%; padding:32px 24px 24px;">
+                    <div style="text-align:center; margin-bottom:20px;">
+                        <div style="font-size:48px; margin-bottom:12px;">🔗</div>
+                        <div style="font-size:11px; font-weight:700; letter-spacing:0.10em; margin-bottom:6px;
+                            background:linear-gradient(135deg,#3b82f6,#a855f7);
+                            -webkit-background-clip:text; -webkit-text-fill-color:transparent;">
+                            NOUVEAUTÉ — PROFIL PARTAGEABLE
+                        </div>
+                        <h2 style="font-size:20px; font-weight:800; color:#fff; margin-bottom:8px; line-height:1.3;">
+                            Ton profil,<br>visible partout
+                        </h2>
+                        <p style="font-size:13px; color:rgba(255,255,255,0.45); line-height:1.6;">
+                            Chaque profil a désormais une <span style="color:#fff; font-weight:600;">page publique unique</span>.
+                            Partage ton lien sur WhatsApp ou Instagram pour attirer plus de matchs.
+                        </p>
+                    </div>
+
+                    <div style="background:rgba(59,130,246,0.07); border:1px solid rgba(59,130,246,0.18); border-radius:16px; padding:14px 16px; margin-bottom:20px;">
+                        <div style="display:flex; gap:12px; align-items:flex-start; margin-bottom:10px;">
+                            <span style="font-size:16px; flex-shrink:0;">🌐</span>
+                            <p style="font-size:12px; color:rgba(255,255,255,0.55); line-height:1.5;">
+                                Ton lien unique : <strong style="color:rgba(255,255,255,0.75);">campuscrush.sn/u/ton-prenom</strong>
+                            </p>
+                        </div>
+                        <div style="display:flex; gap:12px; align-items:flex-start; margin-bottom:10px;">
+                            <span style="font-size:16px; flex-shrink:0;">💬</span>
+                            <p style="font-size:12px; color:rgba(255,255,255,0.55); line-height:1.5;">
+                                Partage-le sur WhatsApp, Instagram ou par SMS — même sans compte
+                            </p>
+                        </div>
+                        <div style="display:flex; gap:12px; align-items:flex-start;">
+                            <span style="font-size:16px; flex-shrink:0;">💘</span>
+                            <p style="font-size:12px; color:rgba(255,255,255,0.55); line-height:1.5;">
+                                Les visiteurs voient ton profil et peuvent s'inscrire pour te contacter
+                            </p>
+                        </div>
+                    </div>
+
+                    <a href="{{ route('profile.show') }}" onclick="closeFeatures(true)" style="
+                        display:block; width:100%; padding:13px; border-radius:14px;
+                        text-align:center; text-decoration:none;
+                        font-size:13px; font-weight:700; color:#fff;
+                        background:linear-gradient(135deg,#3b82f6,#a855f7);
+                        box-shadow:0 6px 24px rgba(59,130,246,0.25);
+                        margin-bottom:10px;
+                    ">Voir mon profil public →</a>
+                </div>
+
             </div>{{-- /slides-track --}}
         </div>
 
@@ -197,6 +246,7 @@
                 <div class="feat-dot active" onclick="goToSlide(0)" style="width:20px; height:6px; border-radius:3px; cursor:pointer; transition:all 0.3s; background:linear-gradient(135deg,#ff5e6c,#a855f7);"></div>
                 <div class="feat-dot" onclick="goToSlide(1)" style="width:6px; height:6px; border-radius:3px; cursor:pointer; transition:all 0.3s; background:rgba(255,255,255,0.20);"></div>
                 <div class="feat-dot" onclick="goToSlide(2)" style="width:6px; height:6px; border-radius:3px; cursor:pointer; transition:all 0.3s; background:rgba(255,255,255,0.20);"></div>
+                <div class="feat-dot" onclick="goToSlide(3)" style="width:6px; height:6px; border-radius:3px; cursor:pointer; transition:all 0.3s; background:rgba(255,255,255,0.20);"></div>
             </div>
 
             {{-- Boutons nav --}}
@@ -249,7 +299,7 @@
 })();
 
 let currentSlide = 0;
-const totalSlides = 3;
+const totalSlides = 4;
 
 function updateSlideUI() {
     const track = document.getElementById('slides-track');
