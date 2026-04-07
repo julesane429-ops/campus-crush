@@ -261,6 +261,10 @@
             if (r.checked) r.closest('.method-btn').classList.add('selected');
         });
     </script>
+
+     @auth
+    @include('components.ai-chat-fab')
+    @endauth
 </body>
 
 </html>

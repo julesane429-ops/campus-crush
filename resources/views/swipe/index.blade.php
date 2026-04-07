@@ -781,9 +781,11 @@ ${profile.badge === 'queen'
     @include('components.pwa-install-banner')
     @auth
     @include('components.push-notifications')
+    @include('components.ai-chat-fab')
     @endauth
     @include('components.features-popup')
     @include('components.feature-reminders')
+
 </body>
 
 </html>

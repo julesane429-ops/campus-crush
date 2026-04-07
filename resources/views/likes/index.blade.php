@@ -199,5 +199,8 @@
     }
     </style>
     @include('components.feature-reminders')
+     @auth
+    @include('components.ai-chat-fab')
+    @endauth
 </body>
 </html>

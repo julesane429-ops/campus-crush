@@ -198,6 +198,9 @@
 @endif
 
 @include('components.bottom-nav')
+ @auth
+    @include('components.ai-chat-fab')
+    @endauth
 </div>
 </div>
 @endsection

@@ -458,6 +458,9 @@
     </script>
     @include('components.feature-reminders')
     @include('components.bottom-nav')
+     @auth
+    @include('components.ai-chat-fab')
+    @endauth
 </body>
 
 </html>
