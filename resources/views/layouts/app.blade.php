@@ -286,6 +286,7 @@
     
     @auth
     @include('components.push-notifications')
+    @include('components.ai-chat-fab')
 @endauth
 </body>
 </html>
