@@ -58,7 +58,11 @@ class SendEngagementPush extends Command
             if ($isSaturday) {
                 $msg = $this->weekendMessages[array_rand($this->weekendMessages)];
             } else {
-                $msg = $this->dailyMessages[array_rand($this->dailyMessages)];
+                // Exclure le message IA pour les utilisateurs qui ont déjà débloqué
+                $pool = $user->ai_chat_unlocked
+                    ? array_filter($this->dailyMessages, fn($m) => !str_contains($m['title'], 'IA'))
+                    : $this->dailyMessages;
+                $msg = array_values($pool)[array_rand($pool)];
             }
 
             // Personnaliser si possible

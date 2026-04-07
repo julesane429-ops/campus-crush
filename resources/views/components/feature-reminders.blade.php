@@ -118,6 +118,28 @@ if ($referralCount < 3) {
                 ];
                 }
 
+                // IA Support gratuit — rappeler que le support est gratuit
+                $reminders[] = [
+                'key' => 'ai_support_free',
+                'icon' => '🤖',
+                'text' => 'Le Support Campus Crush est gratuit ! Pose tes questions à notre assistant IA disponible 24h/7j 💬',
+                'cta' => 'Essayer',
+                'url' => route('ai.index'),
+                'bg' => 'linear-gradient(135deg, rgba(59,130,246,0.95), rgba(168,85,247,0.95))',
+                ];
+
+                // IA complète — si pas encore débloquée et inscrit > 2 jours
+                if (!$user->ai_chat_unlocked && $user->created_at->lt(now()->subDays(2))) {
+                $reminders[] = [
+                'key' => 'ai_unlock',
+                'icon' => '🎯',
+                'text' => 'Coach Profil, AI Match, Entraînement drague — débloques-tout pour 500 FCFA (paiement unique) 🚀',
+                'cta' => 'Découvrir',
+                'url' => route('ai.index'),
+                'bg' => 'linear-gradient(135deg, rgba(168,85,247,0.95), rgba(255,94,108,0.95))',
+                ];
+                }
+
                 // Partage profil — si jamais partagé (on check juste de temps en temps)
                 $reminders[] = [
                 'key' => 'share_profile',
@@ -133,6 +155,7 @@ if ($referralCount < 3) {
                     (function() {
                         const COOLDOWN_DAYS = 3;
                         const MONTHLY_KEYS = ['review_monthly']; // Cooldown spécial de 30 jours
+                        const WEEKLY_KEYS  = ['ai_support_free', 'ai_unlock']; // Cooldown de 7 jours
                         const SHOW_DELAY_MS = 5000; // Afficher 5s après le chargement
 
                         const reminders = @json($reminders);
@@ -144,7 +167,9 @@ if ($referralCount < 3) {
                             const lastShown = localStorage.getItem('cc_remind_' + r.key);
                             if (!lastShown) return true;
                             const elapsed = now - parseInt(lastShown, 10);
-                            const cooldown = MONTHLY_KEYS.includes(r.key) ? 30 : COOLDOWN_DAYS;
+                            const cooldown = MONTHLY_KEYS.includes(r.key) ? 30
+                                           : WEEKLY_KEYS.includes(r.key)  ? 7
+                                           : COOLDOWN_DAYS;
                             return elapsed > cooldown * 24 * 60 * 60 * 1000;
                         });
 

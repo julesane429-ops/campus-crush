@@ -5,7 +5,7 @@
     Pour afficher à nouveau lors d'une prochaine feature, incrémente VERSION.
 --}}
 
-@php $VERSION = '4'; @endphp
+@php $VERSION = '5'; @endphp
 
 <div id="features-overlay" style="
     display: none;
