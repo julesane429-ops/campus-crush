@@ -69,16 +69,12 @@ class AiChatService
                 return $data['choices'][0]['message']['content'] ?? 'Désolé, je n\'ai pas compris. Réessaie 😊';
             }
 
-            // 🔧 DEBUG TEMPORAIRE — à supprimer après diagnostic
-            $errorBody = $response->json();
-            $errorMsg  = $errorBody['error']['message'] ?? $response->body();
             Log::error('OpenAI API error', ['status' => $response->status(), 'body' => $response->body()]);
-            return '[DEBUG ' . $response->status() . '] ' . $errorMsg;
+            return 'Oups, j\'ai un petit souci technique. Réessaie dans quelques secondes 🙏';
 
         } catch (\Exception $e) {
             Log::error('OpenAI exception', ['message' => $e->getMessage()]);
-            // 🔧 DEBUG TEMPORAIRE — à supprimer après diagnostic
-            return '[DEBUG EXCEPTION] ' . $e->getMessage();
+            return 'Connexion perdue. Vérifie ta connexion internet et réessaie 📱';
         }
     }
 
