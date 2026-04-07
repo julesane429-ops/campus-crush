@@ -148,7 +148,7 @@
                     </div>
                     <div class="flex items-start gap-2.5">
                         <span class="w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center text-[10px] font-bold" style="background:rgba(59,130,246,0.15); color:#60a5fa;">2</span>
-                        <p class="text-[11px] text-white/45 leading-relaxed">Tu seras redirigé vers PayDunya — <strong class="text-white/60">remplis ton nom, email et numéro</strong> puis clique sur le logo de ton opérateur</p>
+                        <p class="text-[11px] text-white/45 leading-relaxed">Tu seras redirigé vers PayDunya — <strong class="text-white/60">clique sur le logo de ton opérateur</strong> puis remplis ton nom, email et numéro</p>
                     </div>
                     <div class="flex items-start gap-2.5">
                         <span class="w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center text-[10px] font-bold" style="background:rgba(59,130,246,0.15); color:#60a5fa;">3</span>
