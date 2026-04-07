@@ -16,8 +16,8 @@ class AiChatService
 
     public function __construct()
     {
-        $this->apiKey = config('services.openai.key', env('OPENAI_API_KEY', ''));
-        $this->model = config('services.openai.model', 'gpt-4o-mini'); // Modèle économique
+        $this->apiKey   = config('services.claude.key', env('ANTHROPIC_API_KEY', ''));
+        $this->model    = config('services.claude.model', 'claude-haiku-4-5-20251001'); // Modèle économique
         $this->maxTokens = 300; // Réponses courtes pour contrôler les coûts
     }
 
@@ -26,7 +26,7 @@ class AiChatService
      */
     public function chat(AiChatSession $session, string $userMessage): string
     {
-        $user = $session->user;
+        $user    = $session->user;
         $profile = $user->profile;
 
         // Construire le système prompt selon le type de bot
@@ -40,10 +40,9 @@ class AiChatService
             ->reverse()
             ->values();
 
-        // Construire les messages pour l'API
-        $messages = [
-            ['role' => 'system', 'content' => $systemPrompt],
-        ];
+        // Construire les messages pour l'API Claude
+        // Note : Claude sépare le system prompt du tableau messages
+        $messages = [];
 
         foreach ($history as $msg) {
             $messages[] = ['role' => $msg->role, 'content' => $msg->content];
@@ -53,27 +52,31 @@ class AiChatService
 
         try {
             $response = Http::withHeaders([
-                'Authorization' => 'Bearer ' . $this->apiKey,
-                'Content-Type' => 'application/json',
-            ])->timeout(30)->post('https://api.openai.com/v1/chat/completions', [
-                'model' => $this->model,
-                'messages' => $messages,
-                'max_tokens' => $this->maxTokens,
+                'x-api-key'         => $this->apiKey,
+                'anthropic-version' => '2023-06-01',
+                'Content-Type'      => 'application/json',
+            ])->timeout(30)->post('https://api.anthropic.com/v1/messages', [
+                'model'       => $this->model,
+                'system'      => $systemPrompt,   // <-- séparé des messages chez Claude
+                'messages'    => $messages,
+                'max_tokens'  => $this->maxTokens,
                 'temperature' => $this->getTemperature($session->bot_type),
-                'presence_penalty' => 0.6,
-                'frequency_penalty' => 0.3,
             ]);
 
             if ($response->successful()) {
                 $data = $response->json();
-                return $data['choices'][0]['message']['content'] ?? 'Désolé, je n\'ai pas compris. Réessaie 😊';
+                // Réponse Claude : content[0].text
+                return $data['content'][0]['text'] ?? 'Désolé, je n\'ai pas compris. Réessaie 😊';
             }
 
-            Log::error('OpenAI API error', ['status' => $response->status(), 'body' => $response->body()]);
+            Log::error('Claude API error', [
+                'status' => $response->status(),
+                'body'   => $response->body(),
+            ]);
             return 'Oups, j\'ai un petit souci technique. Réessaie dans quelques secondes 🙏';
 
         } catch (\Exception $e) {
-            Log::error('OpenAI exception', ['message' => $e->getMessage()]);
+            Log::error('Claude exception', ['message' => $e->getMessage()]);
             return 'Connexion perdue. Vérifie ta connexion internet et réessaie 📱';
         }
     }
@@ -84,11 +87,11 @@ class AiChatService
     private function getTemperature(string $botType): float
     {
         return match ($botType) {
-            'support' => 0.3, // Précis et factuel
-            'coach' => 0.5,   // Conseils structurés
-            'match_girl', 'match_boy' => 0.8, // Naturel et varié
-            'flirt' => 0.85,  // Créatif et fun
-            default => 0.7,
+            'support'                    => 0.3,  // Précis et factuel
+            'coach'                      => 0.5,  // Conseils structurés
+            'match_girl', 'match_boy'    => 0.8,  // Naturel et varié
+            'flirt'                      => 0.9,  // Créatif et fun (max 1.0 chez Claude)
+            default                      => 0.7,
         };
     }
 
@@ -97,12 +100,12 @@ class AiChatService
      */
     private function getSystemPrompt(string $botType, User $user, $profile): string
     {
-        $userName = $user->name;
-        $userGender = $profile?->gender ?? 'inconnu';
-        $userAge = $profile?->age ?? '';
-        $userUniv = $profile?->university_name ?? 'université';
-        $userUfr = $profile?->ufr ?? '';
-        $userBio = $profile?->bio ?? '';
+        $userName      = $user->name;
+        $userGender    = $profile?->gender ?? 'inconnu';
+        $userAge       = $profile?->age ?? '';
+        $userUniv      = $profile?->university_name ?? 'université';
+        $userUfr       = $profile?->ufr ?? '';
+        $userBio       = $profile?->bio ?? '';
         $userInterests = $profile?->interests ?? '';
 
         return match ($botType) {
@@ -250,7 +253,7 @@ Toi : "Merci 😊 On se connaît ?"
 Tu parles avec {$userName}, {$userAge} ans, {$userUniv}, {$userUfr}.
 PROMPT,
 
-            default => "Tu es un assistant amical. Réponds en français, courtes réponses.",
+            default => "Tu es un assistant amical. Réponds en français, réponses courtes.",
         };
     }
 
@@ -267,32 +270,32 @@ PROMPT,
     {
         return [
             'support' => [
-                'name' => 'Support Campus Crush',
-                'avatar' => '🤖',
+                'name'        => 'Support Campus Crush',
+                'avatar'      => '🤖',
                 'description' => 'Besoin d\'aide ? Pose tes questions',
-                'color' => '#3b82f6',
-                'free' => true,
+                'color'       => '#3b82f6',
+                'free'        => true,
             ],
             ($userGender === 'homme' ? 'match_girl' : 'match_boy') => [
-                'name' => $userGender === 'homme' ? 'Aïda' : 'Moussa',
-                'avatar' => $userGender === 'homme' ? '👩🏾' : '👨🏾',
+                'name'        => $userGender === 'homme' ? 'Aïda' : 'Moussa',
+                'avatar'      => $userGender === 'homme' ? '👩🏾' : '👨🏾',
                 'description' => $userGender === 'homme' ? 'Étudiante en com à l\'UCAD' : 'Étudiant en info à l\'UGB',
-                'color' => '#ff5e6c',
-                'free' => false,
+                'color'       => '#ff5e6c',
+                'free'        => false,
             ],
             'coach' => [
-                'name' => 'Coach Profil',
-                'avatar' => '🎯',
+                'name'        => 'Coach Profil',
+                'avatar'      => '🎯',
                 'description' => 'Améliore ton profil pour plus de matchs',
-                'color' => '#ffc145',
-                'free' => false,
+                'color'       => '#ffc145',
+                'free'        => false,
             ],
             'flirt' => [
-                'name' => 'Entraînement Drague',
-                'avatar' => '💬',
+                'name'        => 'Entraînement Drague',
+                'avatar'      => '💬',
                 'description' => 'Pratique tes conversations',
-                'color' => '#a855f7',
-                'free' => false,
+                'color'       => '#a855f7',
+                'free'        => false,
             ],
         ];
     }
