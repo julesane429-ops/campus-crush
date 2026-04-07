@@ -221,6 +221,25 @@
             </div>
             @endif
 
+            {{-- Guide paiement --}}
+            <div class="rounded-2xl p-4 mb-4" style="background: rgba(59,130,246,0.06); border: 1px solid rgba(59,130,246,0.15);">
+                <p class="text-xs font-semibold text-blue-400 mb-3">📋 Comment payer en 3 étapes :</p>
+                <div class="space-y-2.5">
+                    <div class="flex items-start gap-2.5">
+                        <span class="w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center text-[10px] font-bold" style="background:rgba(59,130,246,0.15); color:#60a5fa;">1</span>
+                        <p class="text-[11px] text-white/45 leading-relaxed">Choisis Orange Money, Wave ou Free Money ci-dessus et entre ton numéro</p>
+                    </div>
+                    <div class="flex items-start gap-2.5">
+                        <span class="w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center text-[10px] font-bold" style="background:rgba(59,130,246,0.15); color:#60a5fa;">2</span>
+                        <p class="text-[11px] text-white/45 leading-relaxed">Tu seras redirigé vers PayDunya — <strong class="text-white/60">remplis ton nom, email et numéro</strong> puis clique sur le logo de ton opérateur</p>
+                    </div>
+                    <div class="flex items-start gap-2.5">
+                        <span class="w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center text-[10px] font-bold" style="background:rgba(59,130,246,0.15); color:#60a5fa;">3</span>
+                        <p class="text-[11px] text-white/45 leading-relaxed"><strong class="text-white/60">Confirme sur ton téléphone</strong> — tu recevras un pop-up ou un code USSD à valider. Le boost s'active automatiquement ✅</p>
+                    </div>
+                </div>
+            </div>
+            
             <button type="submit" class="w-full py-4 rounded-2xl font-bold text-white text-base transition active:scale-[0.98]" style="background:linear-gradient(135deg,#ffc145,#ff8a5c); box-shadow:0 8px 30px rgba(255,193,69,0.25);">
                 🚀 Booster maintenant — 500 FCFA
             </button>
