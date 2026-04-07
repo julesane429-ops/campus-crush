@@ -18,8 +18,8 @@ class AdminController extends Controller
     public function dashboard()
     {
         $stats = [
-            'total_users' => User::count(),
-            'active_today' => User::whereHas('profile', function ($q) {
+            'total_users' => $this->realUsersQuery()->count(),
+            'active_today' => $this->realUsersQuery()->whereHas('profile', function ($q) {
                 $q->where('last_seen_at', '>=', now()->subDay());
             })->count(),
             'total_matches' => Matche::count(),
@@ -29,18 +29,18 @@ class AdminController extends Controller
             'active_subscriptions' => Subscription::whereIn('status', ['trial', 'active'])
                 ->where(function ($q) {
                     $q->where('ends_at', '>', now())
-                        ->orWhere('trial_ends_at', '>', now());
+                      ->orWhere('trial_ends_at', '>', now());
                 })->count(),
             'total_revenue' => Payment::where('status', 'completed')->sum('amount'),
             'revenue_month' => Payment::where('status', 'completed')
                 ->where('created_at', '>=', now()->startOfMonth())->sum('amount'),
-            'men_count' => User::whereHas('profile', fn($q) => $q->where('gender', 'homme'))->count(),
-            'women_count' => User::whereHas('profile', fn($q) => $q->where('gender', 'femme'))->count(),
-            'men_online' => User::whereHas('profile', fn($q) => $q->where('gender', 'homme')->where('last_seen_at', '>=', now()->subMinutes(2)))->count(),
-            'women_online' => User::whereHas('profile', fn($q) => $q->where('gender', 'femme')->where('last_seen_at', '>=', now()->subMinutes(2)))->count(),
+            'men_count' => $this->realUsersQuery()->whereHas('profile', fn($q) => $q->where('gender', 'homme'))->count(),
+            'women_count' => $this->realUsersQuery()->whereHas('profile', fn($q) => $q->where('gender', 'femme'))->count(),
+            'men_online' => $this->realUsersQuery()->whereHas('profile', fn($q) => $q->where('gender', 'homme')->where('last_seen_at', '>=', now()->subMinutes(2)))->count(),
+            'women_online' => $this->realUsersQuery()->whereHas('profile', fn($q) => $q->where('gender', 'femme')->where('last_seen_at', '>=', now()->subMinutes(2)))->count(),
         ];
 
-        $recentUsers = User::with('profile', 'subscription')
+        $recentUsers = $this->realUsersQuery()->with('profile', 'subscription')
             ->latest()->take(10)->get();
 
         $pendingReports = Report::with(['reporter', 'reportedUser'])
@@ -202,9 +202,9 @@ class AdminController extends Controller
 
         // ── KPIs globaux ─────────────────────────────────────────────────
         $kpis = [
-            'total_users'       => DB::table('users')->count(),
-            'users_this_week'   => DB::table('users')->where('created_at', '>=', now()->subWeek())->count(),
-            'users_this_month'  => DB::table('users')->where('created_at', '>=', now()->startOfMonth())->count(),
+            'total_users'       => $this->realUsersQuery()->count(),
+            'users_this_week'   => $this->realUsersQuery()->where('created_at', '>=', now()->subWeek())->count(),
+            'users_this_month'  => $this->realUsersQuery()->where('created_at', '>=', now()->startOfMonth())->count(),
             'total_matches'     => DB::table('matches')->count(),
             'matches_this_week' => DB::table('matches')->where('created_at', '>=', now()->subWeek())->count(),
             'match_rate'        => DB::table('users')->count() > 0
@@ -265,5 +265,21 @@ class AdminController extends Controller
     {
         Review::findOrFail($id)->delete();
         return back()->with('success', 'Avis supprimé.');
+    }
+
+    /**
+     * Scope pour exclure les utilisateurs seedés (faux profils).
+     */
+    private function realUsersQuery()
+    {
+        return User::whereHas('profile', function ($q) {
+            $q->where(function ($q2) {
+                $q2->whereNull('photo')
+                    ->orWhere(function ($q3) {
+                        $q3->where('photo', 'NOT LIKE', 'avatars/F%')
+                            ->where('photo', 'NOT LIKE', 'avatars/H%');
+                    });
+            });
+        });
     }
 }
