@@ -197,5 +197,8 @@
         window.open('https://wa.me/?text=' + msg, '_blank');
     }
     </script>
+     @auth
+    @include('components.ai-chat-fab')
+    @endauth
 </body>
 </html>
