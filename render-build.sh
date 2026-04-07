@@ -12,9 +12,9 @@ if [ -z "$APP_KEY" ]; then
     php artisan key:generate --force
 fi
 
-# Optimiser Laravel pour la production
-php artisan config:cache
-php artisan route:cache
+# NE PAS cacher la config ici : les variables d'environnement Render
+# (OPENAI_API_KEY, etc.) ne sont disponibles qu'au runtime, pas au build.
+# Le config:cache est fait dans la startCommand (render.yaml).
 php artisan view:cache
 
 # Lancer les migrations
