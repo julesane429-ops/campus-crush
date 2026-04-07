@@ -272,6 +272,19 @@
                     </svg>
                 </a>
 
+                <a href="{{ route('ai.index') }}" class="cc-surface rounded-2xl p-4 flex items-center gap-3.5 hover:bg-white/[0.06] active:scale-[0.98] transition">
+                    <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background: rgba(168,85,247,0.08); border: 1px solid rgba(168,85,247,0.1);">
+                        <span class="text-lg">🤖</span>
+                    </div>
+                    <div class="flex-1">
+                        <h3 class="text-sm font-medium">IA Campus Crush</h3>
+                        <p class="text-[11px] text-white/25">Coach, match IA, entraînement</p>
+                    </div>
+                    <svg class="w-4 h-4 text-white/15" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                        <path stroke-linecap="round" d="M9 5l7 7-7 7" />
+                    </svg>
+                </a>
+
                 <a href="{{ route('settings') }}" class="cc-surface rounded-2xl p-4 flex items-center gap-3.5 hover:bg-white/[0.06] active:scale-[0.98] transition">
                     <div class="w-10 h-10 rounded-xl flex items-center justify-center" style="background: rgba(168,85,247,0.08); border: 1px solid rgba(168,85,247,0.1);">
                         <span class="text-lg">⚙️</span>

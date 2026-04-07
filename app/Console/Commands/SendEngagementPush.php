@@ -19,6 +19,7 @@ class SendEngagementPush extends Command
         ['title' => '👀 Tu manques à tes matchs', 'body' => 'Tes matchs attendent de tes nouvelles. Envoie un message !'],
         ['title' => '💬 Un message t\'attend peut-être', 'body' => 'Connecte-toi pour vérifier tes conversations !'],
         ['title' => '🎯 Profils compatibles trouvés', 'body' => 'On a trouvé des profils qui pourraient te plaire. Viens voir !'],
+        ['title' => '🤖 Teste l\'IA Campus Crush !', 'body' => 'Discute avec une IA, améliore ton profil et entraîne-toi à draguer 💬'],
     ];
 
     private array $weekendMessages = [

@@ -281,6 +281,51 @@
         margin-bottom:10px;
     ">Envoyer un crush anonyme 💘</a>
                 </div>
+
+                {{-- ══ SLIDE : IA Campus Crush ══ --}}
+<div class="feat-slide" style="min-width:100%; padding:32px 24px 24px;">
+    <div style="text-align:center; margin-bottom:20px;">
+        <div style="font-size:48px; margin-bottom:12px;">🤖</div>
+        <div style="font-size:11px; font-weight:700; letter-spacing:0.10em; margin-bottom:6px;
+            background:linear-gradient(135deg,#a855f7,#ff5e6c);
+            -webkit-background-clip:text; -webkit-text-fill-color:transparent;">
+            NOUVEAUTÉ — IA CAMPUS CRUSH
+        </div>
+        <h2 style="font-size:20px; font-weight:800; color:#fff; margin-bottom:8px; line-height:1.3;">
+            4 assistants IA<br>pour t'aider à matcher
+        </h2>
+        <p style="font-size:13px; color:rgba(255,255,255,0.45); line-height:1.6;">
+            Discute avec une IA, améliore ton profil avec le Coach,
+            et entraîne-toi à draguer — le tout pour <strong style="color:#fff;">500 FCFA</strong> (paiement unique).
+        </p>
+    </div>
+    <div style="background:rgba(168,85,247,0.07); border:1px solid rgba(168,85,247,0.18); border-radius:16px; padding:14px 16px; margin-bottom:20px;">
+        <div style="display:flex; gap:12px; align-items:flex-start; margin-bottom:10px;">
+            <span style="font-size:16px; flex-shrink:0;">👩🏾</span>
+            <p style="font-size:12px; color:rgba(255,255,255,0.55); line-height:1.5;"><strong style="color:#ff8a8a;">AI Match</strong> — Discute avec Aïda ou Moussa comme un vrai match</p>
+        </div>
+        <div style="display:flex; gap:12px; align-items:flex-start; margin-bottom:10px;">
+            <span style="font-size:16px; flex-shrink:0;">🎯</span>
+            <p style="font-size:12px; color:rgba(255,255,255,0.55); line-height:1.5;"><strong style="color:#ffc145;">Coach Profil</strong> — Analyse et améliore ton profil</p>
+        </div>
+        <div style="display:flex; gap:12px; align-items:flex-start; margin-bottom:10px;">
+            <span style="font-size:16px; flex-shrink:0;">💬</span>
+            <p style="font-size:12px; color:rgba(255,255,255,0.55); line-height:1.5;"><strong style="color:#a855f7;">Entraînement</strong> — Pratique tes conversations + feedback</p>
+        </div>
+        <div style="display:flex; gap:12px; align-items:flex-start;">
+            <span style="font-size:16px; flex-shrink:0;">🤖</span>
+            <p style="font-size:12px; color:rgba(255,255,255,0.55); line-height:1.5;"><strong style="color:#60a5fa;">Support 24/7</strong> — Aide gratuite sur l'app</p>
+        </div>
+    </div>
+    <a href="/ai" onclick="closeFeatures(true)" style="
+        display:block; width:100%; padding:13px; border-radius:14px;
+        text-align:center; text-decoration:none;
+        font-size:13px; font-weight:700; color:#fff;
+        background:linear-gradient(135deg,#a855f7,#ff5e6c);
+        box-shadow:0 6px 24px rgba(168,85,247,0.25);
+        margin-bottom:10px;
+    ">Découvrir l'IA Campus Crush →</a>
+</div>
             </div>{{-- /slides-track --}}
         </div>
 
@@ -293,6 +338,7 @@
                 <div class="feat-dot" onclick="goToSlide(2)" style="width:6px; height:6px; border-radius:3px; cursor:pointer; transition:all 0.3s; background:rgba(255,255,255,0.20);"></div>
                 <div class="feat-dot" onclick="goToSlide(3)" style="width:6px; height:6px; border-radius:3px; cursor:pointer; transition:all 0.3s; background:rgba(255,255,255,0.20);"></div>
                 <div class="feat-dot" onclick="goToSlide(4)" style="width:6px; height:6px; border-radius:3px; cursor:pointer; transition:all 0.3s; background:rgba(255,255,255,0.20);"></div>
+                <div class="feat-dot" onclick="goToSlide(5)" style="width:6px; height:6px; border-radius:3px; cursor:pointer; transition:all 0.3s; background:rgba(255,255,255,0.20);"></div>
             </div>
 
             {{-- Boutons nav --}}
@@ -352,7 +398,7 @@
     })();
 
     let currentSlide = 0;
-    const totalSlides = 5;
+    const totalSlides = 6;
 
     function updateSlideUI() {
         const track = document.getElementById('slides-track');

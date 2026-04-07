@@ -121,6 +121,15 @@ Route::middleware(['auth', 'subscription'])->group(function () {
 Route::get('/crush', [App\Http\Controllers\AnonymousCrushController::class, 'index'])->name('crush.index');
 Route::post('/crush/send', [App\Http\Controllers\AnonymousCrushController::class, 'send'])->name('crush.send');
 Route::post('/crush/{id}/reveal', [App\Http\Controllers\AnonymousCrushController::class, 'reveal'])->name('crush.reveal');
+
+// IA Campus Crush
+Route::get('/ai', [App\Http\Controllers\AiChatController::class, 'index'])->name('ai.index');
+Route::get('/ai/unlock', [App\Http\Controllers\AiChatController::class, 'unlock'])->name('ai.unlock');
+Route::post('/ai/pay', [App\Http\Controllers\AiChatController::class, 'pay'])->name('ai.pay');
+Route::get('/ai/pay/success', [App\Http\Controllers\AiChatController::class, 'paySuccess'])->name('ai.pay.success');
+Route::get('/ai/chat/{botType}', [App\Http\Controllers\AiChatController::class, 'session'])->name('ai.session');
+Route::post('/ai/chat/{sessionId}/send', [App\Http\Controllers\AiChatController::class, 'send'])->name('ai.send');
+Route::post('/ai/chat/{sessionId}/reset', [App\Http\Controllers\AiChatController::class, 'reset'])->name('ai.reset');
 });
 
 // ── Panel Admin ──

@@ -163,6 +163,15 @@ class SendFeatureReminders extends Command
             ];
         }
 
+        if (!$user->ai_chat_unlocked && $user->created_at->lt(now()->subDays(2))) {
+            $reminders[] = [
+                'title' => '🤖 Découvre l\'IA Campus Crush',
+                'body' => 'Coach profil, AI match, entraînement drague — débloque tout pour 500 FCFA !',
+                'url' => '/ai',
+                'weight' => 4,
+            ];
+        }
+        
         if (empty($reminders)) return null;
 
         // Choisir avec pondération (les plus importants ont plus de chances)

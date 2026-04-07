@@ -11,18 +11,20 @@ class User extends Authenticatable
 {
     use HasFactory, Notifiable;
 
-     protected $fillable = [
+    protected $fillable = [
         'name',
         'email',
         'password',
         'is_admin',
         'is_banned',
         'ban_reason',
-        'referral_code', 
+        'referral_code',
         'referred_by',
         'streak_days',
         'last_login_date',
-        'slug',   
+        'slug',
+        'ai_chat_unlocked',
+        'ai_chat_unlocked_at',
     ];
     protected $hidden = [
         'password',
@@ -38,6 +40,8 @@ class User extends Authenticatable
             'is_banned' => 'boolean',
             'streak_days'     => 'integer',
             'last_login_date' => 'date',
+            'ai_chat_unlocked' => 'boolean',
+            'ai_chat_unlocked_at' => 'datetime',
         ];
     }
 
@@ -73,22 +77,22 @@ class User extends Authenticatable
         return $this->hasMany(Payment::class);
     }
 
-     public function matchesAsUser1()
+    public function matchesAsUser1()
     {
         return $this->hasMany(\App\Models\Matche::class, 'user1_id');
     }
- 
+
     public function matchesAsUser2()
     {
         return $this->hasMany(\App\Models\Matche::class, 'user2_id');
     }
- 
+
     public function matches()
     {
         return \App\Models\Matche::where('user1_id', $this->id)
             ->orWhere('user2_id', $this->id);
     }
- 
+
 
     // ── Helpers ──
 
