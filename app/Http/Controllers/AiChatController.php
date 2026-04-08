@@ -193,7 +193,7 @@ class AiChatController extends Controller
 
         // PayDunya
         if (!empty(config('paydunya.master_key'))) {
-            $result = $this->paydunya->createInvoice(
+            $result = $this->paydunya->createAiChatInvoice(
                 $user->id,
                 $user->name,
                 $user->email

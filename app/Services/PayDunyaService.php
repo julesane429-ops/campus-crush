@@ -246,5 +246,85 @@ class PayDunyaService
                 'error' => 'Erreur de connexion',
             ];
         }
+
+    /**
+     * Créer une facture PayDunya pour débloquer l'IA Campus Crush (500 FCFA).
+     */
+    public function createAiChatInvoice(int $userId, string $userName, string $userEmail): array
+    {
+        $amount = 500;
+
+        $payload = [
+            'invoice' => [
+                'total_amount' => $amount,
+                'description'  => 'Déblocage IA Campus Crush',
+            ],
+            'store' => [
+                'name'        => config('paydunya.store.name'),
+                'tagline'     => config('paydunya.store.tagline'),
+                'phone'       => config('paydunya.store.phone'),
+                'website_url' => config('paydunya.store.website'),
+            ],
+            'items' => [
+                'item_0' => [
+                    'name'        => 'IA Campus Crush — Accès illimité',
+                    'quantity'    => 1,
+                    'unit_price'  => $amount,
+                    'total_price' => $amount,
+                    'description' => 'Aïda, Coach Profil, Entraînement Drague',
+                ],
+            ],
+            'actions' => [
+                'return_url'   => route('ai.pay.success'),
+                'cancel_url'   => route('ai.unlock'),
+                'callback_url' => route('webhook.paydunya'),
+            ],
+            'custom_data' => [
+                'user_id'    => $userId,
+                'user_name'  => $userName,
+                'user_email' => $userEmail,
+                'type'       => 'ai_chat',
+            ],
+            'channels' => [
+                'orange-money-senegal',
+                'wave-senegal',
+                'free-money-senegal',
+            ],
+        ];
+
+        try {
+            $response = Http::withoutVerifying()
+                ->withHeaders($this->headers)
+                ->post($this->baseUrl . '/checkout-invoice/create', $payload);
+
+            $data = $response->json();
+
+            Log::info('PayDunya AI chat invoice response', ['data' => $data]);
+
+            if ($response->successful() && isset($data['response_code']) && $data['response_code'] === '00') {
+                return [
+                    'success' => true,
+                    'url'     => $data['response_text'],
+                    'token'   => $data['token'] ?? null,
+                    'error'   => null,
+                ];
+            }
+
+            return [
+                'success' => false,
+                'url'     => null,
+                'token'   => null,
+                'error'   => $data['response_text'] ?? 'Erreur PayDunya inconnue',
+            ];
+
+        } catch (\Exception $e) {
+            Log::error('PayDunya AI chat error', ['message' => $e->getMessage()]);
+            return [
+                'success' => false,
+                'url'     => null,
+                'token'   => null,
+                'error'   => 'Erreur de connexion au service de paiement',
+            ];
+        }
     }
 }

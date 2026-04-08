@@ -163,16 +163,39 @@ class SubscriptionController extends Controller
                     'notes' => 'Confirmé par IPN PayDunya',
                 ]);
 
-                // Activer l'abonnement
-                $subscription = Subscription::where('user_id', $userId)->latest()->first();
-                if ($subscription) {
-                    $subscription->activate(
-                        $payment->payment_method,
-                        $data['data']['receipt_number'] ?? $invoiceToken
-                    );
-                }
 
-                Log::info("Subscription activated for user {$userId} via IPN");
+                // Détecter le type de paiement (abonnement, boost, ai_chat...)
+                $paymentType = $data['data']['custom_data']['type'] ?? 'subscription';
+
+                if ($paymentType === 'ai_chat') {
+                    // ✅ Débloquer l'IA Campus Crush
+                    \App\Models\User::where('id', $userId)->update([
+                        'ai_chat_unlocked'    => true,
+                        'ai_chat_unlocked_at' => now(),
+                    ]);
+                    Log::info("AI Chat unlocked for user {$userId} via IPN");
+
+                } elseif ($paymentType === 'boost') {
+                    // ✅ Activer le boost 24h
+                    $profile = \App\Models\Profile::where('user_id', $userId)->first();
+                    if ($profile) {
+                        $from = ($profile->boosted_until && $profile->boosted_until->isFuture())
+                            ? $profile->boosted_until : now();
+                        $profile->update(['boosted_until' => $from->addHours(24)]);
+                    }
+                    Log::info("Boost activated for user {$userId} via IPN");
+
+                } else {
+                    // ✅ Activer l'abonnement mensuel
+                    $subscription = Subscription::where('user_id', $userId)->latest()->first();
+                    if ($subscription) {
+                        $subscription->activate(
+                            $payment->payment_method,
+                            $data['data']['receipt_number'] ?? $invoiceToken
+                        );
+                    }
+                    Log::info("Subscription activated for user {$userId} via IPN");
+                }
             }
         }
 
