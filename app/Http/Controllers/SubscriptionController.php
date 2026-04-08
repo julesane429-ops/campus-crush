@@ -59,7 +59,9 @@ class SubscriptionController extends Controller
             $result = $this->paydunya->createInvoice(
                 $user->id,
                 $user->name,
-                $user->email
+                $user->email,
+                $request->phone_number,
+                $request->payment_method
             );
 
             if ($result['success']) {
@@ -174,7 +176,6 @@ class SubscriptionController extends Controller
                         'ai_chat_unlocked_at' => now(),
                     ]);
                     Log::info("AI Chat unlocked for user {$userId} via IPN");
-
                 } elseif ($paymentType === 'boost') {
                     // ✅ Activer le boost 24h
                     $profile = \App\Models\Profile::where('user_id', $userId)->first();
@@ -184,7 +185,6 @@ class SubscriptionController extends Controller
                         $profile->update(['boosted_until' => $from->addHours(24)]);
                     }
                     Log::info("Boost activated for user {$userId} via IPN");
-
                 } else {
                     // ✅ Activer l'abonnement mensuel
                     $subscription = Subscription::where('user_id', $userId)->latest()->first();

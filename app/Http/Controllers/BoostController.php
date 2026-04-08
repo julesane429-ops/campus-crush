@@ -68,7 +68,9 @@ class BoostController extends Controller
             $result = $this->paydunya->createBoostInvoice(
                 $user->id,
                 $user->name,
-                $user->email
+                $user->email,
+                $request->phone_number,
+                $request->payment_method
             );
 
             if ($result['success']) {

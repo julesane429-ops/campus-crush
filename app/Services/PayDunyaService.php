@@ -24,70 +24,69 @@ class PayDunyaService
     }
 
     /**
-     * Créer une facture PayDunya et obtenir l'URL de paiement.
-     *
-     * @param int $userId - ID de l'utilisateur qui paie
-     * @param string $userName - Nom de l'utilisateur
-     * @param string $userEmail - Email de l'utilisateur
-     * @return array ['success' => bool, 'url' => string|null, 'token' => string|null, 'error' => string|null]
+     * Créer une facture générique.
      */
-    public function createInvoice(int $userId, string $userName, string $userEmail): array
+    private function createGenericInvoice(array $params): array
     {
-        $amount = config('paydunya.amount', 1000);
-
         $payload = [
-            // Infos du store
             'invoice' => [
-                'total_amount' => $amount,
-                'description' => 'Abonnement Campus Crush - 1 mois',
+                'total_amount' => $params['amount'],
+                'description' => $params['description'],
             ],
-
-            // Éléments de la facture
             'store' => [
                 'name' => config('paydunya.store.name'),
                 'tagline' => config('paydunya.store.tagline'),
                 'phone' => config('paydunya.store.phone'),
                 'website_url' => config('paydunya.store.website'),
             ],
-
-            // Items
             'items' => [
                 'item_0' => [
-                    'name' => 'Abonnement Campus Crush Premium',
+                    'name' => $params['item_name'],
                     'quantity' => 1,
-                    'unit_price' => $amount,
-                    'total_price' => $amount,
-                    'description' => 'Accès illimité pour 30 jours',
+                    'unit_price' => $params['amount'],
+                    'total_price' => $params['amount'],
+                    'description' => $params['item_desc'],
                 ],
             ],
-
-            // URLs de redirection
             'actions' => [
-                'return_url' => config('paydunya.return_url'),
-                'cancel_url' => config('paydunya.cancel_url'),
-                'callback_url' => config('paydunya.ipn_url'),
+                'return_url' => $params['return_url'],
+                'cancel_url' => $params['cancel_url'],
+                'callback_url' => $params['callback_url'] ?? config('paydunya.ipn_url'),
             ],
-
-            // Données personnalisées (récupérables après paiement)
-            'custom_data' => [
-                'user_id' => $userId,
-                'user_name' => $userName,
-                'user_email' => $userEmail,
-                'plan' => 'monthly',
-            ],
-
-            // Moyens de paiement autorisés
-            'channels' => [
-                'orange-money-senegal',
-                'wave-senegal',
-                'free-money-senegal',
-            ],
+            'custom_data' => $params['custom_data'],
         ];
+
+        // ═══ PRÉ-REMPLIR LES INFOS CLIENT ═══
+        // C'est ça qui évite à l'utilisateur de tout retaper sur PayDunya !
+        if (!empty($params['customer_name']) || !empty($params['customer_email']) || !empty($params['customer_phone'])) {
+            $payload['customer'] = array_filter([
+                'name' => $params['customer_name'] ?? null,
+                'email' => $params['customer_email'] ?? null,
+                'phone' => $params['customer_phone'] ?? null,
+            ]);
+        }
+
+        // ═══ SÉLECTION AUTOMATIQUE DU CANAL ═══
+        // Si on connaît la méthode de paiement, on ne montre que celle-là
+        if (!empty($params['payment_method'])) {
+            $channelMap = [
+                'orange_money' => ['orange-money-senegal'],
+                'wave' => ['wave-senegal'],
+                'free_money' => ['free-money-senegal'],
+            ];
+            $payload['channels'] = $channelMap[$params['payment_method']] ?? [
+                'orange-money-senegal', 'wave-senegal', 'free-money-senegal',
+            ];
+        } else {
+            $payload['channels'] = [
+                'orange-money-senegal', 'wave-senegal', 'free-money-senegal',
+            ];
+        }
 
         try {
             $response = Http::withoutVerifying()
-    ->withHeaders($this->headers)
-    ->post($this->baseUrl . '/checkout-invoice/create', $payload);
+                ->withHeaders($this->headers)
+                ->post($this->baseUrl . '/checkout-invoice/create', $payload);
 
             $data = $response->json();
 
@@ -96,7 +95,7 @@ class PayDunyaService
             if ($response->successful() && isset($data['response_code']) && $data['response_code'] === '00') {
                 return [
                     'success' => true,
-                    'url' => $data['response_text'], // URL de redirection PayDunya
+                    'url' => $data['response_text'],
                     'token' => $data['token'] ?? null,
                     'error' => null,
                 ];
@@ -111,7 +110,6 @@ class PayDunyaService
 
         } catch (\Exception $e) {
             Log::error('PayDunya error', ['message' => $e->getMessage()]);
-
             return [
                 'success' => false,
                 'url' => null,
@@ -121,100 +119,93 @@ class PayDunyaService
         }
     }
 
-     /**
-     * Créer une facture PayDunya pour un boost de profil 24h (500 FCFA).
+    /**
+     * Facture abonnement (1000 FCFA).
      */
-    public function createBoostInvoice(int $userId, string $userName, string $userEmail): array
+    public function createInvoice(int $userId, string $userName, string $userEmail, ?string $phone = null, ?string $paymentMethod = null): array
     {
-        $amount = 500;
- 
-        $payload = [
-            'invoice' => [
-                'total_amount' => $amount,
-                'description'  => 'Boost profil Campus Crush - 24h',
-            ],
-            'store' => [
-                'name'        => config('paydunya.store.name'),
-                'tagline'     => config('paydunya.store.tagline'),
-                'phone'       => config('paydunya.store.phone'),
-                'website_url' => config('paydunya.store.website'),
-            ],
-            'items' => [
-                'item_0' => [
-                    'name'        => 'Boost profil 24h',
-                    'quantity'    => 1,
-                    'unit_price'  => $amount,
-                    'total_price' => $amount,
-                    'description' => 'Ton profil apparaît en tête du swipe pendant 24h',
-                ],
-            ],
-            'actions' => [
-                'return_url'   => route('boost.success'),
-                'cancel_url'   => route('boost.index'),
-                'callback_url' => route('webhook.paydunya'), // IPN existant
-            ],
+        return $this->createGenericInvoice([
+            'amount' => config('paydunya.amount', 1000),
+            'description' => 'Abonnement Campus Crush - 1 mois',
+            'item_name' => 'Abonnement Campus Crush Premium',
+            'item_desc' => 'Accès illimité pour 30 jours',
+            'return_url' => config('paydunya.return_url'),
+            'cancel_url' => config('paydunya.cancel_url'),
+            'callback_url' => config('paydunya.ipn_url'),
+            'customer_name' => $userName,
+            'customer_email' => $userEmail,
+            'customer_phone' => $phone,
+            'payment_method' => $paymentMethod,
             'custom_data' => [
-                'user_id'    => $userId,
-                'user_name'  => $userName,
+                'user_id' => $userId,
+                'user_name' => $userName,
                 'user_email' => $userEmail,
-                'type'       => 'boost', // pour distinguer dans le webhook
+                'plan' => 'monthly',
             ],
-            'channels' => [
-                'orange-money-senegal',
-                'wave-senegal',
-                'free-money-senegal',
-            ],
-        ];
- 
-        try {
-            $response = Http::withoutVerifying()
-                ->withHeaders($this->headers)
-                ->post($this->baseUrl . '/checkout-invoice/create', $payload);
- 
-            $data = $response->json();
- 
-            Log::info('PayDunya boost invoice response', ['data' => $data]);
- 
-            if ($response->successful() && isset($data['response_code']) && $data['response_code'] === '00') {
-                return [
-                    'success' => true,
-                    'url'     => $data['response_text'],
-                    'token'   => $data['token'] ?? null,
-                    'error'   => null,
-                ];
-            }
- 
-            return [
-                'success' => false,
-                'url'     => null,
-                'token'   => null,
-                'error'   => $data['response_text'] ?? 'Erreur PayDunya inconnue',
-            ];
- 
-        } catch (\Exception $e) {
-            Log::error('PayDunya boost error', ['message' => $e->getMessage()]);
-            return [
-                'success' => false,
-                'url'     => null,
-                'token'   => null,
-                'error'   => 'Erreur de connexion au service de paiement',
-            ];
-        }
+        ]);
     }
- 
 
     /**
-     * Vérifier le statut d'un paiement via le token de facture.
-     *
-     * @param string $token - Token de la facture PayDunya
-     * @return array
+     * Facture boost (500 FCFA).
+     */
+    public function createBoostInvoice(int $userId, string $userName, string $userEmail, ?string $phone = null, ?string $paymentMethod = null): array
+    {
+        return $this->createGenericInvoice([
+            'amount' => 500,
+            'description' => 'Boost profil Campus Crush - 24h',
+            'item_name' => 'Boost profil 24h',
+            'item_desc' => 'Ton profil apparaît en tête du swipe pendant 24h',
+            'return_url' => route('boost.success'),
+            'cancel_url' => route('boost.index'),
+            'callback_url' => route('webhook.paydunya'),
+            'customer_name' => $userName,
+            'customer_email' => $userEmail,
+            'customer_phone' => $phone,
+            'payment_method' => $paymentMethod,
+            'custom_data' => [
+                'user_id' => $userId,
+                'user_name' => $userName,
+                'user_email' => $userEmail,
+                'type' => 'boost',
+            ],
+        ]);
+    }
+
+    /**
+     * Facture IA Chat (500 FCFA).
+     */
+    public function createAiChatInvoice(int $userId, string $userName, string $userEmail, ?string $phone = null, ?string $paymentMethod = null): array
+    {
+        return $this->createGenericInvoice([
+            'amount' => 500,
+            'description' => 'Déblocage IA Campus Crush',
+            'item_name' => 'IA Campus Crush — Accès illimité',
+            'item_desc' => 'Aïda, Coach Profil, Entraînement Drague',
+            'return_url' => route('ai.pay.success'),
+            'cancel_url' => route('ai.unlock'),
+            'callback_url' => route('webhook.paydunya'),
+            'customer_name' => $userName,
+            'customer_email' => $userEmail,
+            'customer_phone' => $phone,
+            'payment_method' => $paymentMethod,
+            'custom_data' => [
+                'user_id' => $userId,
+                'user_name' => $userName,
+                'user_email' => $userEmail,
+                'type' => 'ai_chat',
+            ],
+        ]);
+    }
+
+    /**
+     * Vérifier le statut d'un paiement.
      */
     public function checkPaymentStatus(string $token): array
     {
         try {
             $response = Http::withoutVerifying()
-    ->withHeaders($this->headers)
-    ->get($this->baseUrl . '/checkout-invoice/confirm/' . $token);
+                ->withHeaders($this->headers)
+                ->get($this->baseUrl . '/checkout-invoice/confirm/' . $token);
 
             $data = $response->json();
 
@@ -223,7 +214,7 @@ class PayDunyaService
             if ($response->successful() && isset($data['status'])) {
                 return [
                     'success' => true,
-                    'status' => $data['status'], // 'completed', 'pending', 'cancelled'
+                    'status' => $data['status'],
                     'custom_data' => $data['custom_data'] ?? [],
                     'receipt_url' => $data['receipt_url'] ?? null,
                     'customer' => $data['customer'] ?? [],
@@ -239,92 +230,10 @@ class PayDunyaService
 
         } catch (\Exception $e) {
             Log::error('PayDunya status check error', ['message' => $e->getMessage()]);
-
             return [
                 'success' => false,
                 'status' => 'error',
                 'error' => 'Erreur de connexion',
-            ];
-        }
-    }
-
-    /**
-     * Créer une facture PayDunya pour débloquer l'IA Campus Crush (500 FCFA).
-     */
-    public function createAiChatInvoice(int $userId, string $userName, string $userEmail): array
-    {
-        $amount = 500;
-
-        $payload = [
-            'invoice' => [
-                'total_amount' => $amount,
-                'description'  => 'Déblocage IA Campus Crush',
-            ],
-            'store' => [
-                'name'        => config('paydunya.store.name'),
-                'tagline'     => config('paydunya.store.tagline'),
-                'phone'       => config('paydunya.store.phone'),
-                'website_url' => config('paydunya.store.website'),
-            ],
-            'items' => [
-                'item_0' => [
-                    'name'        => 'IA Campus Crush — Accès illimité',
-                    'quantity'    => 1,
-                    'unit_price'  => $amount,
-                    'total_price' => $amount,
-                    'description' => 'Aïda, Coach Profil, Entraînement Drague',
-                ],
-            ],
-            'actions' => [
-                'return_url'   => route('ai.pay.success'),
-                'cancel_url'   => route('ai.unlock'),
-                'callback_url' => route('webhook.paydunya'),
-            ],
-            'custom_data' => [
-                'user_id'    => $userId,
-                'user_name'  => $userName,
-                'user_email' => $userEmail,
-                'type'       => 'ai_chat',
-            ],
-            'channels' => [
-                'orange-money-senegal',
-                'wave-senegal',
-                'free-money-senegal',
-            ],
-        ];
-
-        try {
-            $response = Http::withoutVerifying()
-                ->withHeaders($this->headers)
-                ->post($this->baseUrl . '/checkout-invoice/create', $payload);
-
-            $data = $response->json();
-
-            Log::info('PayDunya AI chat invoice response', ['data' => $data]);
-
-            if ($response->successful() && isset($data['response_code']) && $data['response_code'] === '00') {
-                return [
-                    'success' => true,
-                    'url'     => $data['response_text'],
-                    'token'   => $data['token'] ?? null,
-                    'error'   => null,
-                ];
-            }
-
-            return [
-                'success' => false,
-                'url'     => null,
-                'token'   => null,
-                'error'   => $data['response_text'] ?? 'Erreur PayDunya inconnue',
-            ];
-
-        } catch (\Exception $e) {
-            Log::error('PayDunya AI chat error', ['message' => $e->getMessage()]);
-            return [
-                'success' => false,
-                'url'     => null,
-                'token'   => null,
-                'error'   => 'Erreur de connexion au service de paiement',
             ];
         }
     }
