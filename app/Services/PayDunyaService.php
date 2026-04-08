@@ -23,17 +23,206 @@ class PayDunyaService
         ];
     }
 
-    /**
-     * Créer une facture d'abonnement (1000 FCFA).
-     */
-    public function createInvoice(int $userId, string $userName, string $userEmail, string $phoneNumber = ''): array
-    {
-        $amount = config('paydunya.amount', 1000);
+    // ══════════════════════════════════════════════════════════════
+    // SOFTPAY — Paiement direct sans redirection PayDunya
+    // ══════════════════════════════════════════════════════════════
 
+    /**
+     * Créer la facture PUIS lancer le Softpay vers le bon opérateur.
+     *
+     * @return array [
+     *   'success' => bool,
+     *   'method' => 'wave_redirect'|'om_redirect'|'free_ussd'|'fallback_redirect',
+     *   'url' => string|null (URL de redirection Wave/OM),
+     *   'message' => string|null (message pour Free Money),
+     *   'token' => string|null,
+     *   'error' => string|null,
+     * ]
+     */
+    public function payDirect(
+        int $userId,
+        string $userName,
+        string $userEmail,
+        string $phoneNumber,
+        string $paymentMethod,
+        int $amount,
+        string $description,
+        string $returnUrl,
+        string $cancelUrl,
+        string $type = 'subscription'
+    ): array {
+        // Étape 1 : Créer la facture
+        $invoice = $this->createGenericInvoice(
+            $userId, $userName, $userEmail, $amount, $description, $returnUrl, $cancelUrl, $type
+        );
+
+        if (!$invoice['success']) {
+            return [
+                'success' => false,
+                'method' => null,
+                'url' => null,
+                'message' => null,
+                'token' => null,
+                'error' => $invoice['error'],
+            ];
+        }
+
+        $token = $invoice['token'];
+        $phone = $this->formatPhone($phoneNumber);
+
+        // Étape 2 : Appeler le Softpay selon l'opérateur
+        $softpayResult = match ($paymentMethod) {
+            'wave' => $this->softpayWave($token, $userName, $userEmail, $phone),
+            'orange_money' => $this->softpayOrangeMoney($token, $userName, $userEmail, $phone),
+            'free_money' => $this->softpayFreeMoney($token, $userName, $userEmail, $phone),
+            default => ['success' => false, 'error' => 'Méthode inconnue'],
+        };
+
+        if ($softpayResult['success']) {
+            return array_merge($softpayResult, ['token' => $token, 'error' => null]);
+        }
+
+        // Fallback : redirection vers la page PayDunya classique
+        Log::warning('Softpay failed, fallback to redirect', [
+            'method' => $paymentMethod,
+            'error' => $softpayResult['error'] ?? 'unknown',
+        ]);
+
+        return [
+            'success' => true,
+            'method' => 'fallback_redirect',
+            'url' => $invoice['url'],
+            'message' => null,
+            'token' => $token,
+            'error' => null,
+        ];
+    }
+
+    /**
+     * Softpay WAVE Sénégal.
+     * Retourne une URL pay.wave.com qui ouvre l'app Wave directement.
+     */
+    private function softpayWave(string $token, string $name, string $email, string $phone): array
+    {
+        try {
+            $response = Http::withoutVerifying()
+                ->withHeaders($this->headers)
+                ->post($this->baseUrl . '/softpay/wave-senegal', [
+                    'wave_senegal_fullName' => $name,
+                    'wave_senegal_email' => $email,
+                    'wave_senegal_phone' => $phone,
+                    'wave_senegal_payment_token' => $token,
+                ]);
+
+            $data = $response->json();
+            Log::info('Softpay Wave response', ['data' => $data]);
+
+            if ($response->successful() && ($data['success'] ?? false)) {
+                return [
+                    'success' => true,
+                    'method' => 'wave_redirect',
+                    'url' => $data['url'], // https://pay.wave.com/...
+                    'message' => null,
+                ];
+            }
+
+            return ['success' => false, 'error' => $data['message'] ?? 'Wave Softpay échoué'];
+
+        } catch (\Exception $e) {
+            Log::error('Softpay Wave error', ['message' => $e->getMessage()]);
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Softpay ORANGE MONEY Sénégal (nouvelle API QR Code).
+     * Retourne om_url qui ouvre l'app Orange Money directement.
+     */
+    private function softpayOrangeMoney(string $token, string $name, string $email, string $phone): array
+    {
+        try {
+            $response = Http::withoutVerifying()
+                ->withHeaders($this->headers)
+                ->post($this->baseUrl . '/softpay/new-orange-money-senegal', [
+                    'customer_name' => $name,
+                    'customer_email' => $email,
+                    'phone_number' => $phone,
+                    'invoice_token' => $token,
+                ]);
+
+            $data = $response->json();
+            Log::info('Softpay Orange Money response', ['data' => $data]);
+
+            if ($response->successful() && ($data['success'] ?? false)) {
+                // Privilégier om_url (ouvre l'app OM directement) sinon l'URL QR code
+                $redirectUrl = $data['other_url']['om_url']
+                    ?? $data['url']
+                    ?? null;
+
+                return [
+                    'success' => true,
+                    'method' => 'om_redirect',
+                    'url' => $redirectUrl,
+                    'message' => null,
+                ];
+            }
+
+            return ['success' => false, 'error' => $data['message'] ?? 'Orange Money Softpay échoué'];
+
+        } catch (\Exception $e) {
+            Log::error('Softpay Orange Money error', ['message' => $e->getMessage()]);
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Softpay FREE MONEY Sénégal.
+     * Envoie la demande au téléphone. L'utilisateur doit taper #150# pour confirmer.
+     */
+    private function softpayFreeMoney(string $token, string $name, string $email, string $phone): array
+    {
+        try {
+            $response = Http::withoutVerifying()
+                ->withHeaders($this->headers)
+                ->post($this->baseUrl . '/softpay/free-money-senegal', [
+                    'customer_name' => $name,
+                    'customer_email' => $email,
+                    'phone_number' => $phone,
+                    'payment_token' => $token,
+                ]);
+
+            $data = $response->json();
+            Log::info('Softpay Free Money response', ['data' => $data]);
+
+            if ($response->successful() && ($data['success'] ?? false)) {
+                return [
+                    'success' => true,
+                    'method' => 'free_ussd',
+                    'url' => null,
+                    'message' => $data['message'] ?? 'Tapez #150# pour finaliser le paiement.',
+                ];
+            }
+
+            return ['success' => false, 'error' => $data['message'] ?? 'Free Money Softpay échoué'];
+
+        } catch (\Exception $e) {
+            Log::error('Softpay Free Money error', ['message' => $e->getMessage()]);
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    // CRÉATION DE FACTURE
+    // ══════════════════════════════════════════════════════════════
+
+    private function createGenericInvoice(
+        int $userId, string $userName, string $userEmail,
+        int $amount, string $description, string $returnUrl, string $cancelUrl, string $type
+    ): array {
         $payload = [
             'invoice' => [
                 'total_amount' => $amount,
-                'description' => 'Abonnement Campus Crush - 1 mois',
+                'description' => $description,
             ],
             'store' => [
                 'name' => config('paydunya.store.name'),
@@ -43,24 +232,22 @@ class PayDunyaService
             ],
             'items' => [
                 'item_0' => [
-                    'name' => 'Abonnement Campus Crush Premium',
+                    'name' => $description,
                     'quantity' => 1,
                     'unit_price' => $amount,
                     'total_price' => $amount,
-                    'description' => 'Accès illimité pour 30 jours',
                 ],
             ],
             'actions' => [
-                'return_url' => config('paydunya.return_url'),
-                'cancel_url' => config('paydunya.cancel_url'),
+                'return_url' => $returnUrl,
+                'cancel_url' => $cancelUrl,
                 'callback_url' => config('paydunya.ipn_url'),
             ],
             'custom_data' => [
                 'user_id' => $userId,
                 'user_name' => $userName,
                 'user_email' => $userEmail,
-                'plan' => 'monthly',
-                'type' => 'subscription',
+                'type' => $type,
             ],
             'channels' => [
                 'orange-money-senegal',
@@ -69,133 +256,43 @@ class PayDunyaService
             ],
         ];
 
-        // Pré-remplir le formulaire PayDunya
-        if ($userName || $userEmail || $phoneNumber) {
-            $payload['customer'] = [
-                'name' => $userName,
-                'email' => $userEmail,
-                'phone' => $phoneNumber ? $this->formatPhone($phoneNumber) : '',
-            ];
-        }
-
         return $this->sendInvoice($payload);
     }
 
-    /**
-     * Créer une facture de boost (500 FCFA).
-     */
+    // ══════════════════════════════════════════════════════════════
+    // MÉTHODES LEGACY (gardées pour compatibilité webhook)
+    // ══════════════════════════════════════════════════════════════
+
+    public function createInvoice(int $userId, string $userName, string $userEmail, string $phoneNumber = ''): array
+    {
+        return $this->createGenericInvoice(
+            $userId, $userName, $userEmail,
+            config('paydunya.amount', 1000),
+            'Abonnement Campus Crush - 1 mois',
+            config('paydunya.return_url'),
+            config('paydunya.cancel_url'),
+            'subscription'
+        );
+    }
+
     public function createBoostInvoice(int $userId, string $userName, string $userEmail, string $phoneNumber = ''): array
     {
-        $amount = 500;
-
-        $payload = [
-            'invoice' => [
-                'total_amount' => $amount,
-                'description' => 'Boost profil Campus Crush - 24h',
-            ],
-            'store' => [
-                'name' => config('paydunya.store.name'),
-                'tagline' => config('paydunya.store.tagline'),
-                'phone' => config('paydunya.store.phone'),
-                'website_url' => config('paydunya.store.website'),
-            ],
-            'items' => [
-                'item_0' => [
-                    'name' => 'Boost profil 24h',
-                    'quantity' => 1,
-                    'unit_price' => $amount,
-                    'total_price' => $amount,
-                    'description' => 'Ton profil apparaît en tête du swipe pendant 24h',
-                ],
-            ],
-            'actions' => [
-                'return_url' => route('boost.success'),
-                'cancel_url' => route('boost.index'),
-                'callback_url' => route('webhook.paydunya'),
-            ],
-            'custom_data' => [
-                'user_id' => $userId,
-                'user_name' => $userName,
-                'user_email' => $userEmail,
-                'type' => 'boost',
-            ],
-            'channels' => [
-                'orange-money-senegal',
-                'wave-senegal',
-                'free-money-senegal',
-            ],
-        ];
-
-        if ($userName || $userEmail || $phoneNumber) {
-            $payload['customer'] = [
-                'name' => $userName,
-                'email' => $userEmail,
-                'phone' => $phoneNumber ? $this->formatPhone($phoneNumber) : '',
-            ];
-        }
-
-        return $this->sendInvoice($payload);
+        return $this->createGenericInvoice(
+            $userId, $userName, $userEmail, 500,
+            'Boost profil Campus Crush - 24h',
+            route('boost.success'), route('boost.index'), 'boost'
+        );
     }
 
-    /**
-     * Créer une facture IA Chat (500 FCFA).
-     */
     public function createAiChatInvoice(int $userId, string $userName, string $userEmail, string $phoneNumber = ''): array
     {
-        $amount = 500;
-
-        $payload = [
-            'invoice' => [
-                'total_amount' => $amount,
-                'description' => 'Déblocage IA Campus Crush',
-            ],
-            'store' => [
-                'name' => config('paydunya.store.name'),
-                'tagline' => config('paydunya.store.tagline'),
-                'phone' => config('paydunya.store.phone'),
-                'website_url' => config('paydunya.store.website'),
-            ],
-            'items' => [
-                'item_0' => [
-                    'name' => 'IA Campus Crush — Accès illimité',
-                    'quantity' => 1,
-                    'unit_price' => $amount,
-                    'total_price' => $amount,
-                    'description' => 'Aïda, Coach Profil, Entraînement Drague',
-                ],
-            ],
-            'actions' => [
-                'return_url' => route('ai.pay.success'),
-                'cancel_url' => route('ai.unlock'),
-                'callback_url' => route('webhook.paydunya'),
-            ],
-            'custom_data' => [
-                'user_id' => $userId,
-                'user_name' => $userName,
-                'user_email' => $userEmail,
-                'type' => 'ai_chat',
-            ],
-            'channels' => [
-                'orange-money-senegal',
-                'wave-senegal',
-                'free-money-senegal',
-            ],
-        ];
-
-        if ($userName || $userEmail || $phoneNumber) {
-            $payload['customer'] = [
-                'name' => $userName,
-                'email' => $userEmail,
-                'phone' => $phoneNumber ? $this->formatPhone($phoneNumber) : '',
-            ];
-        }
-
-        return $this->sendInvoice($payload);
+        return $this->createGenericInvoice(
+            $userId, $userName, $userEmail, 500,
+            'Déblocage IA Campus Crush',
+            route('ai.pay.success'), route('ai.unlock'), 'ai_chat'
+        );
     }
 
-    /**
-     * Vérifier le statut d'un paiement via le token de facture.
-     */
     public function checkPaymentStatus(string $token): array
     {
         try {
@@ -204,8 +301,6 @@ class PayDunyaService
                 ->get($this->baseUrl . '/checkout-invoice/confirm/' . $token);
 
             $data = $response->json();
-
-            Log::info('PayDunya status check', ['token' => $token, 'data' => $data]);
 
             if ($response->successful() && isset($data['status'])) {
                 return [
@@ -218,25 +313,17 @@ class PayDunyaService
                 ];
             }
 
-            return [
-                'success' => false,
-                'status' => 'unknown',
-                'error' => $data['response_text'] ?? 'Impossible de vérifier le paiement',
-            ];
+            return ['success' => false, 'status' => 'unknown', 'error' => $data['response_text'] ?? 'Erreur'];
 
         } catch (\Exception $e) {
-            Log::error('PayDunya status check error', ['message' => $e->getMessage()]);
-            return [
-                'success' => false,
-                'status' => 'error',
-                'error' => 'Erreur de connexion',
-            ];
+            return ['success' => false, 'status' => 'error', 'error' => $e->getMessage()];
         }
     }
 
-    /**
-     * Envoyer la facture à PayDunya.
-     */
+    // ══════════════════════════════════════════════════════════════
+    // HELPERS
+    // ══════════════════════════════════════════════════════════════
+
     private function sendInvoice(array $payload): array
     {
         try {
@@ -245,7 +332,6 @@ class PayDunyaService
                 ->post($this->baseUrl . '/checkout-invoice/create', $payload);
 
             $data = $response->json();
-
             Log::info('PayDunya invoice response', ['data' => $data]);
 
             if ($response->successful() && isset($data['response_code']) && $data['response_code'] === '00') {
@@ -257,27 +343,14 @@ class PayDunyaService
                 ];
             }
 
-            return [
-                'success' => false,
-                'url' => null,
-                'token' => null,
-                'error' => $data['response_text'] ?? 'Erreur PayDunya inconnue',
-            ];
+            return ['success' => false, 'url' => null, 'token' => null, 'error' => $data['response_text'] ?? 'Erreur'];
 
         } catch (\Exception $e) {
             Log::error('PayDunya error', ['message' => $e->getMessage()]);
-            return [
-                'success' => false,
-                'url' => null,
-                'token' => null,
-                'error' => 'Erreur de connexion au service de paiement',
-            ];
+            return ['success' => false, 'url' => null, 'token' => null, 'error' => 'Erreur de connexion'];
         }
     }
 
-    /**
-     * Formater le numéro au format international sénégalais.
-     */
     private function formatPhone(string $phone): string
     {
         $phone = preg_replace('/[^0-9]/', '', $phone);

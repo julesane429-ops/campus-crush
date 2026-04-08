@@ -83,6 +83,36 @@ Route::middleware('auth')->group(function () {
     // Avis
     Route::post('/review', [App\Http\Controllers\ReviewController::class, 'store'])->name('review.store');
     Route::delete('/review', [App\Http\Controllers\ReviewController::class, 'destroy'])->name('review.destroy');
+
+    // Vérification paiement Softpay (polling)
+    Route::get('/payment/check/{token}', function (string $token) {
+        $paydunya = app(\App\Services\PayDunyaService::class);
+        $result = $paydunya->checkPaymentStatus($token);
+
+        if ($result['success'] && $result['status'] === 'completed') {
+            $payment = \App\Models\Payment::where('transaction_id', $token)->first();
+            if ($payment && $payment->status !== 'completed') {
+                $payment->update(['status' => 'completed']);
+                $userId = $payment->user_id;
+                $notes = $payment->notes ?? '';
+
+                if (str_contains($notes, 'ai_chat')) {
+                    \App\Models\User::find($userId)?->update(['ai_chat_unlocked' => true, 'ai_chat_unlocked_at' => now()]);
+                } elseif (str_contains($notes, 'boost')) {
+                    $profile = \App\Models\Profile::where('user_id', $userId)->first();
+                    if ($profile) {
+                        $from = ($profile->boosted_until && $profile->boosted_until->isFuture()) ? $profile->boosted_until : now();
+                        $profile->update(['boosted_until' => $from->addHours(24)]);
+                    }
+                } else {
+                    $sub = \App\Models\Subscription::where('user_id', $userId)->latest()->first();
+                    $sub?->activate($payment->payment_method, $token);
+                }
+            }
+            return response()->json(['status' => 'completed']);
+        }
+        return response()->json(['status' => $result['status'] ?? 'pending']);
+    })->name('payment.check');
 });
 
 // ── Routes avec abonnement requis ──
@@ -118,18 +148,18 @@ Route::middleware(['auth', 'subscription'])->group(function () {
     Route::get('/referral', [App\Http\Controllers\ReferralController::class, 'index'])->name('referral.index');
 
     // Crush anonyme
-Route::get('/crush', [App\Http\Controllers\AnonymousCrushController::class, 'index'])->name('crush.index');
-Route::post('/crush/send', [App\Http\Controllers\AnonymousCrushController::class, 'send'])->name('crush.send');
-Route::post('/crush/{id}/reveal', [App\Http\Controllers\AnonymousCrushController::class, 'reveal'])->name('crush.reveal');
+    Route::get('/crush', [App\Http\Controllers\AnonymousCrushController::class, 'index'])->name('crush.index');
+    Route::post('/crush/send', [App\Http\Controllers\AnonymousCrushController::class, 'send'])->name('crush.send');
+    Route::post('/crush/{id}/reveal', [App\Http\Controllers\AnonymousCrushController::class, 'reveal'])->name('crush.reveal');
 
-// IA Campus Crush
-Route::get('/ai', [App\Http\Controllers\AiChatController::class, 'index'])->name('ai.index');
-Route::get('/ai/unlock', [App\Http\Controllers\AiChatController::class, 'unlock'])->name('ai.unlock');
-Route::post('/ai/pay', [App\Http\Controllers\AiChatController::class, 'pay'])->name('ai.pay');
-Route::get('/ai/pay/success', [App\Http\Controllers\AiChatController::class, 'paySuccess'])->name('ai.pay.success');
-Route::get('/ai/chat/{botType}', [App\Http\Controllers\AiChatController::class, 'session'])->name('ai.session');
-Route::post('/ai/chat/{sessionId}/send', [App\Http\Controllers\AiChatController::class, 'send'])->name('ai.send');
-Route::post('/ai/chat/{sessionId}/reset', [App\Http\Controllers\AiChatController::class, 'reset'])->name('ai.reset');
+    // IA Campus Crush
+    Route::get('/ai', [App\Http\Controllers\AiChatController::class, 'index'])->name('ai.index');
+    Route::get('/ai/unlock', [App\Http\Controllers\AiChatController::class, 'unlock'])->name('ai.unlock');
+    Route::post('/ai/pay', [App\Http\Controllers\AiChatController::class, 'pay'])->name('ai.pay');
+    Route::get('/ai/pay/success', [App\Http\Controllers\AiChatController::class, 'paySuccess'])->name('ai.pay.success');
+    Route::get('/ai/chat/{botType}', [App\Http\Controllers\AiChatController::class, 'session'])->name('ai.session');
+    Route::post('/ai/chat/{sessionId}/send', [App\Http\Controllers\AiChatController::class, 'send'])->name('ai.send');
+    Route::post('/ai/chat/{sessionId}/reset', [App\Http\Controllers\AiChatController::class, 'reset'])->name('ai.reset');
 });
 
 // ── Panel Admin ──

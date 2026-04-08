@@ -17,16 +17,12 @@ class BoostController extends Controller
 
     public function index()
     {
-        $user    = Auth::user();
+        $user = Auth::user();
         $profile = $user->profile;
+        if (!$profile) return redirect()->route('profile.create');
 
-        if (!$profile) {
-            return redirect()->route('profile.create');
-        }
-
-        $isBoosted   = $profile->boosted_until && $profile->boosted_until->isFuture();
+        $isBoosted = $profile->boosted_until && $profile->boosted_until->isFuture();
         $boostedUntil = $isBoosted ? $profile->boosted_until : null;
-
         return view('boost.index', compact('user', 'profile', 'isBoosted', 'boostedUntil'));
     }
 
@@ -34,104 +30,107 @@ class BoostController extends Controller
     {
         $request->validate([
             'payment_method' => 'required|in:orange_money,wave,free_money',
-            'phone_number'   => ['required', 'string', 'regex:/^(77|78|76|70|75)[0-9]{7}$/'],
+            'phone_number' => ['required', 'string', 'regex:/^(77|78|76|70|75)[0-9]{7}$/'],
         ]);
 
-        $user    = Auth::user();
-        $profile = $user->profile;
-
-        if (!$profile) {
-            return redirect()->route('profile.create');
-        }
+        $user = Auth::user();
+        if (!$user->profile) return redirect()->route('profile.create');
 
         $payment = Payment::create([
-            'user_id'        => $user->id,
+            'user_id' => $user->id,
             'subscription_id' => $user->getOrCreateSubscription()->id,
-            'amount'         => 500,
+            'amount' => 500,
             'payment_method' => $request->payment_method,
-            'phone_number'   => $request->phone_number,
+            'phone_number' => $request->phone_number,
             'transaction_id' => 'BOOST-' . strtoupper(Str::random(10)),
-            'status'         => 'pending',
-            'notes'          => 'boost_24h',
+            'status' => 'pending',
+            'notes' => 'boost_24h',
         ]);
 
-        // ── Tenter PayDunya si configuré ──
         if (!empty(config('paydunya.master_key'))) {
-
-            $result = $this->paydunya->createBoostInvoice(
-                $user->id,
-                $user->name,
-                $user->email,
-                $request->phone_number
+            $result = $this->paydunya->payDirect(
+                $user->id, $user->name, $user->email,
+                $request->phone_number, $request->payment_method,
+                500, 'Boost profil Campus Crush - 24h',
+                route('boost.success'), route('boost.index'), 'boost'
             );
 
             if ($result['success']) {
-                $payment->update([
-                    'transaction_id' => $result['token'],
-                    'notes'          => 'boost_24h|paydunya_redirect',
-                ]);
-                return redirect()->away($result['url']);
+                $payment->update(['transaction_id' => $result['token'], 'notes' => 'boost_24h|' . $result['method']]);
+
+                if (in_array($result['method'], ['wave_redirect', 'om_redirect']) && $result['url']) {
+                    return view('payment.waiting', [
+                        'token' => $result['token'],
+                        'paymentMethod' => $request->payment_method,
+                        'amount' => 500,
+                        'method' => $result['method'],
+                        'softpayMessage' => null,
+                        'redirectUrl' => $result['url'],
+                        'successUrl' => route('boost.success', ['token' => $result['token']]),
+                        'cancelUrl' => route('boost.index'),
+                    ]);
+                }
+
+                if ($result['method'] === 'free_ussd') {
+                    return view('payment.waiting', [
+                        'token' => $result['token'],
+                        'paymentMethod' => $request->payment_method,
+                        'amount' => 500,
+                        'method' => 'free_ussd',
+                        'softpayMessage' => $result['message'],
+                        'redirectUrl' => null,
+                        'successUrl' => route('boost.success', ['token' => $result['token']]),
+                        'cancelUrl' => route('boost.index'),
+                    ]);
+                }
+
+                if ($result['method'] === 'fallback_redirect' && $result['url']) {
+                    return redirect()->away($result['url']);
+                }
             }
 
-            Log::warning('PayDunya boost invoice failed', ['error' => $result['error']]);
             $payment->update(['status' => 'failed', 'notes' => $result['error']]);
             return back()->with('error', 'Erreur de paiement : ' . $result['error']);
         }
 
-        // ── MODE SIMULATION ──
         $payment->update(['status' => 'completed']);
         $this->activateBoost($user->id);
-
-        return redirect()->route('boost.success')
-            ->with('success', 'Boost activé ! Ton profil est en tête de file pendant 24h. (mode simulation)');
+        return redirect()->route('boost.success')->with('success', 'Boost activé ! (simulation)');
     }
 
     public function success(Request $request)
     {
         $user = Auth::user();
-
         if ($token = $request->query('token')) {
             $result = $this->paydunya->checkPaymentStatus($token);
-
             if ($result['success'] && $result['status'] === 'completed') {
                 $payment = Payment::where('transaction_id', $token)->first();
-
                 if ($payment && $payment->status !== 'completed') {
                     $payment->update(['status' => 'completed']);
                     $this->activateBoost($user->id);
                 }
             }
         }
-
-        $profile      = $user->fresh()->profile;
-        $isBoosted    = $profile->boosted_until && $profile->boosted_until->isFuture();
+        $profile = $user->fresh()->profile;
+        $isBoosted = $profile->boosted_until && $profile->boosted_until->isFuture();
         $boostedUntil = $isBoosted ? $profile->boosted_until : null;
-
         return view('boost.success', compact('isBoosted', 'boostedUntil'));
     }
 
     public function webhook(Request $request)
     {
         $data = $request->all();
-        Log::info('PayDunya Boost IPN received', $data);
+        $status = $data['data']['status'] ?? null;
+        $userId = $data['data']['custom_data']['user_id'] ?? null;
+        $token = $data['data']['invoice']['token'] ?? null;
 
-        $status  = $data['data']['status'] ?? null;
-        $userId  = $data['data']['custom_data']['user_id'] ?? null;
-        $token   = $data['data']['invoice']['token'] ?? null;
-        $notes   = $data['data']['custom_data']['type'] ?? null;
-
-        if ($status === 'completed' && $notes === 'boost') {
-            $payment = Payment::where('transaction_id', $token)
-                ->where('user_id', $userId)
-                ->first();
-
+        if ($status === 'completed') {
+            $payment = Payment::where('transaction_id', $token)->where('user_id', $userId)->first();
             if ($payment && $payment->status !== 'completed') {
                 $payment->update(['status' => 'completed']);
                 $this->activateBoost($userId);
-                Log::info("Boost activated for user {$userId} via IPN");
             }
         }
-
         return response()->json(['status' => 'ok']);
     }
 
@@ -139,10 +138,7 @@ class BoostController extends Controller
     {
         $profile = \App\Models\Profile::where('user_id', $userId)->first();
         if ($profile) {
-            $from = ($profile->boosted_until && $profile->boosted_until->isFuture())
-                ? $profile->boosted_until
-                : now();
-
+            $from = ($profile->boosted_until && $profile->boosted_until->isFuture()) ? $profile->boosted_until : now();
             $profile->update(['boosted_until' => $from->addHours(24)]);
         }
     }

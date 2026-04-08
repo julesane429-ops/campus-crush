@@ -31,8 +31,7 @@ class AiChatController extends Controller
         $sessions = AiChatSession::where('user_id', $user->id)
             ->where('is_active', true)
             ->with(['messages' => fn($q) => $q->latest()->take(1)])
-            ->get()
-            ->keyBy('bot_type');
+            ->get()->keyBy('bot_type');
 
         return view('ai-chat.index', compact('bots', 'isUnlocked', 'sessions'));
     }
@@ -43,7 +42,7 @@ class AiChatController extends Controller
         $profile = $user->profile;
 
         if ($botType !== 'support' && !$user->ai_chat_unlocked) {
-            return redirect()->route('ai.index')->with('error', 'Débloque l\'IA Campus Crush pour 500 FCFA pour accéder à cette fonctionnalité.');
+            return redirect()->route('ai.index')->with('error', 'Débloque l\'IA pour 500 FCFA.');
         }
 
         $bots = AiChatService::getBots($profile->gender);
@@ -55,19 +54,11 @@ class AiChatController extends Controller
             ['bot_name' => $bot['name'], 'bot_avatar' => $bot['avatar']]
         );
 
-        $messages = AiChatMessage::where('session_id', $session->id)
-            ->orderBy('created_at', 'asc')
-            ->get();
+        $messages = AiChatMessage::where('session_id', $session->id)->orderBy('created_at', 'asc')->get();
 
         if ($messages->isEmpty() && $botType !== 'support') {
             $welcomeMsg = $this->aiChat->chat($session, $this->getWelcomeTrigger($botType));
-
-            AiChatMessage::create([
-                'session_id' => $session->id,
-                'role' => 'assistant',
-                'content' => $welcomeMsg,
-            ]);
-
+            AiChatMessage::create(['session_id' => $session->id, 'role' => 'assistant', 'content' => $welcomeMsg]);
             $session->increment('message_count');
             $messages = AiChatMessage::where('session_id', $session->id)->orderBy('created_at', 'asc')->get();
         }
@@ -78,65 +69,33 @@ class AiChatController extends Controller
     public function send(Request $request, int $sessionId)
     {
         $request->validate(['message' => 'required|string|max:500']);
-
         $user = Auth::user();
-        $session = AiChatSession::where('id', $sessionId)
-            ->where('user_id', $user->id)
-            ->firstOrFail();
+        $session = AiChatSession::where('id', $sessionId)->where('user_id', $user->id)->firstOrFail();
 
-        $todayCount = AiChatMessage::where('session_id', $session->id)
-            ->where('role', 'user')
-            ->whereDate('created_at', today())
-            ->count();
-
+        $todayCount = AiChatMessage::where('session_id', $session->id)->where('role', 'user')->whereDate('created_at', today())->count();
         if ($todayCount >= 50) {
-            return response()->json([
-                'reply' => 'Tu as atteint la limite de 50 messages par jour. Reviens demain ! 😊',
-                'limited' => true,
-            ]);
+            return response()->json(['reply' => 'Limite de 50 messages/jour atteinte. Reviens demain ! 😊', 'limited' => true]);
         }
 
-        AiChatMessage::create([
-            'session_id' => $session->id,
-            'role' => 'user',
-            'content' => $request->message,
-        ]);
-
+        AiChatMessage::create(['session_id' => $session->id, 'role' => 'user', 'content' => $request->message]);
         $reply = $this->aiChat->chat($session, $request->message);
-
-        AiChatMessage::create([
-            'session_id' => $session->id,
-            'role' => 'assistant',
-            'content' => $reply,
-        ]);
-
+        AiChatMessage::create(['session_id' => $session->id, 'role' => 'assistant', 'content' => $reply]);
         $session->increment('message_count', 2);
 
-        return response()->json([
-            'reply' => $reply,
-            'limited' => false,
-        ]);
+        return response()->json(['reply' => $reply, 'limited' => false]);
     }
 
     public function reset(int $sessionId)
     {
-        $user = Auth::user();
-        $session = AiChatSession::where('id', $sessionId)
-            ->where('user_id', $user->id)
-            ->firstOrFail();
-
+        $session = AiChatSession::where('id', $sessionId)->where('user_id', Auth::id())->firstOrFail();
         $session->messages()->delete();
         $session->update(['message_count' => 0]);
-
         return back()->with('success', 'Conversation réinitialisée !');
     }
 
     public function unlock()
     {
-        $user = Auth::user();
-        if ($user->ai_chat_unlocked) {
-            return redirect()->route('ai.index')->with('success', 'IA déjà débloquée !');
-        }
+        if (Auth::user()->ai_chat_unlocked) return redirect()->route('ai.index');
         return view('ai-chat.unlock');
     }
 
@@ -148,10 +107,7 @@ class AiChatController extends Controller
         ]);
 
         $user = Auth::user();
-
-        if ($user->ai_chat_unlocked) {
-            return redirect()->route('ai.index');
-        }
+        if ($user->ai_chat_unlocked) return redirect()->route('ai.index');
 
         $payment = Payment::create([
             'user_id' => $user->id,
@@ -164,41 +120,62 @@ class AiChatController extends Controller
             'notes' => 'ai_chat_unlock',
         ]);
 
-        // PayDunya
         if (!empty(config('paydunya.master_key'))) {
-            $result = $this->paydunya->createAiChatInvoice(
-                $user->id,
-                $user->name,
-                $user->email,
-                $request->phone_number
+            $result = $this->paydunya->payDirect(
+                $user->id, $user->name, $user->email,
+                $request->phone_number, $request->payment_method,
+                500, 'Déblocage IA Campus Crush',
+                route('ai.pay.success'), route('ai.unlock'), 'ai_chat'
             );
 
             if ($result['success']) {
-                $payment->update([
-                    'transaction_id' => $result['token'],
-                    'notes' => 'ai_chat_unlock|paydunya_redirect',
-                ]);
-                return redirect()->away($result['url']);
+                $payment->update(['transaction_id' => $result['token'], 'notes' => 'ai_chat|' . $result['method']]);
+
+                if (in_array($result['method'], ['wave_redirect', 'om_redirect']) && $result['url']) {
+                    return view('payment.waiting', [
+                        'token' => $result['token'],
+                        'paymentMethod' => $request->payment_method,
+                        'amount' => 500,
+                        'method' => $result['method'],
+                        'softpayMessage' => null,
+                        'redirectUrl' => $result['url'],
+                        'successUrl' => route('ai.pay.success', ['token' => $result['token']]),
+                        'cancelUrl' => route('ai.unlock'),
+                    ]);
+                }
+
+                if ($result['method'] === 'free_ussd') {
+                    return view('payment.waiting', [
+                        'token' => $result['token'],
+                        'paymentMethod' => $request->payment_method,
+                        'amount' => 500,
+                        'method' => 'free_ussd',
+                        'softpayMessage' => $result['message'],
+                        'redirectUrl' => null,
+                        'successUrl' => route('ai.pay.success', ['token' => $result['token']]),
+                        'cancelUrl' => route('ai.unlock'),
+                    ]);
+                }
+
+                if ($result['method'] === 'fallback_redirect' && $result['url']) {
+                    return redirect()->away($result['url']);
+                }
             }
 
             $payment->update(['status' => 'failed', 'notes' => $result['error']]);
-            return back()->with('error', 'Erreur de paiement : ' . $result['error']);
+            return back()->with('error', 'Erreur : ' . $result['error']);
         }
 
-        // Mode simulation
         $payment->update(['status' => 'completed']);
         $user->update(['ai_chat_unlocked' => true, 'ai_chat_unlocked_at' => now()]);
-
-        return redirect()->route('ai.index')->with('success', 'IA Campus Crush débloquée ! 🎉');
+        return redirect()->route('ai.index')->with('success', 'IA débloquée ! 🎉');
     }
 
     public function paySuccess(Request $request)
     {
         $user = Auth::user();
-
         if ($token = $request->query('token')) {
             $result = $this->paydunya->checkPaymentStatus($token);
-
             if ($result['success'] && $result['status'] === 'completed') {
                 $payment = Payment::where('transaction_id', $token)->first();
                 if ($payment && $payment->status !== 'completed') {
@@ -207,8 +184,7 @@ class AiChatController extends Controller
                 }
             }
         }
-
-        return redirect()->route('ai.index')->with('success', 'IA Campus Crush débloquée ! 🎉');
+        return redirect()->route('ai.index')->with('success', 'IA débloquée ! 🎉');
     }
 
     private function getWelcomeTrigger(string $botType): string

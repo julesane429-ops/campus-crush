@@ -46,35 +46,62 @@ class SubscriptionController extends Controller
             'status' => 'pending',
         ]);
 
-        // ── Tenter PayDunya si configuré ──
         if (!empty(config('paydunya.master_key'))) {
 
-            $result = $this->paydunya->createInvoice(
-                $user->id,
-                $user->name,
-                $user->email,
-                $request->phone_number
+            $result = $this->paydunya->payDirect(
+                $user->id, $user->name, $user->email,
+                $request->phone_number, $request->payment_method,
+                1000, 'Abonnement Campus Crush - 1 mois',
+                route('subscription.success'), route('subscription.cancel'),
+                'subscription'
             );
 
             if ($result['success']) {
-                $payment->update([
-                    'transaction_id' => $result['token'],
-                    'notes' => 'paydunya_redirect',
-                ]);
-                return redirect()->away($result['url']);
+                $payment->update(['transaction_id' => $result['token'], 'notes' => 'softpay_' . $result['method']]);
+
+                // Wave / Orange Money : rediriger vers l'app mobile
+                if (in_array($result['method'], ['wave_redirect', 'om_redirect']) && $result['url']) {
+                    return view('payment.waiting', [
+                        'token' => $result['token'],
+                        'paymentMethod' => $request->payment_method,
+                        'amount' => 1000,
+                        'method' => $result['method'],
+                        'softpayMessage' => null,
+                        'redirectUrl' => $result['url'],
+                        'successUrl' => route('subscription.success', ['token' => $result['token']]),
+                        'cancelUrl' => route('subscription.index'),
+                    ]);
+                }
+
+                // Free Money : afficher "tapez #150#"
+                if ($result['method'] === 'free_ussd') {
+                    return view('payment.waiting', [
+                        'token' => $result['token'],
+                        'paymentMethod' => $request->payment_method,
+                        'amount' => 1000,
+                        'method' => 'free_ussd',
+                        'softpayMessage' => $result['message'],
+                        'redirectUrl' => null,
+                        'successUrl' => route('subscription.success', ['token' => $result['token']]),
+                        'cancelUrl' => route('subscription.index'),
+                    ]);
+                }
+
+                // Fallback : redirection page PayDunya classique
+                if ($result['method'] === 'fallback_redirect' && $result['url']) {
+                    return redirect()->away($result['url']);
+                }
             }
 
-            Log::warning('PayDunya invoice creation failed', ['error' => $result['error']]);
+            Log::warning('PayDunya payment failed', ['error' => $result['error']]);
             $payment->update(['status' => 'failed', 'notes' => $result['error']]);
             return back()->with('error', 'Erreur de paiement : ' . $result['error']);
         }
 
-        // ── MODE SIMULATION ──
+        // MODE SIMULATION
         $payment->update(['status' => 'completed']);
         $subscription->activate($request->payment_method, $payment->transaction_id);
-
-        return redirect()->route('subscription.success')
-            ->with('success', 'Paiement de 1 000 FCFA confirmé ! (mode simulation)');
+        return redirect()->route('subscription.success')->with('success', 'Paiement confirmé ! (simulation)');
     }
 
     public function success(Request $request)
@@ -83,16 +110,10 @@ class SubscriptionController extends Controller
 
         if ($token = $request->query('token')) {
             $result = $this->paydunya->checkPaymentStatus($token);
-
             if ($result['success'] && $result['status'] === 'completed') {
                 $payment = Payment::where('transaction_id', $token)->first();
-
                 if ($payment && $payment->status !== 'completed') {
-                    $payment->update([
-                        'status' => 'completed',
-                        'transaction_id' => $result['transaction_id'] ?? $token,
-                    ]);
-
+                    $payment->update(['status' => 'completed', 'transaction_id' => $result['transaction_id'] ?? $token]);
                     $subscription = $user->getOrCreateSubscription();
                     $subscription->activate($payment->payment_method, $payment->transaction_id);
                 }
@@ -101,24 +122,20 @@ class SubscriptionController extends Controller
 
         $subscription = $user->subscription;
         $lastPayment = $user->payments()->latest()->first();
-
         return view('subscription.confirm', compact('subscription', 'lastPayment'));
     }
 
     public function cancel()
     {
-        return redirect()->route('subscription.index')
-            ->with('error', 'Paiement annulé. Vous pouvez réessayer.');
+        return redirect()->route('subscription.index')->with('error', 'Paiement annulé. Vous pouvez réessayer.');
     }
 
     public function webhook(Request $request)
     {
         $data = $request->all();
-
         Log::info('PayDunya IPN received', $data);
 
         if (!isset($data['data']['custom_data']['user_id'])) {
-            Log::warning('PayDunya IPN: missing user_id');
             return response()->json(['status' => 'error'], 400);
         }
 
@@ -127,43 +144,24 @@ class SubscriptionController extends Controller
         $invoiceToken = $data['data']['invoice']['token'] ?? null;
 
         if ($status === 'completed') {
-            $payment = Payment::where('transaction_id', $invoiceToken)
-                ->where('user_id', $userId)
-                ->first();
+            $payment = Payment::where('transaction_id', $invoiceToken)->where('user_id', $userId)->first();
 
             if ($payment && $payment->status !== 'completed') {
-                $payment->update([
-                    'status' => 'completed',
-                    'notes' => 'Confirmé par IPN PayDunya',
-                ]);
+                $payment->update(['status' => 'completed', 'notes' => 'Confirmé par IPN']);
 
                 $paymentType = $data['data']['custom_data']['type'] ?? 'subscription';
 
                 if ($paymentType === 'ai_chat') {
-                    \App\Models\User::where('id', $userId)->update([
-                        'ai_chat_unlocked' => true,
-                        'ai_chat_unlocked_at' => now(),
-                    ]);
-                    Log::info("AI Chat unlocked for user {$userId} via IPN");
-
+                    \App\Models\User::where('id', $userId)->update(['ai_chat_unlocked' => true, 'ai_chat_unlocked_at' => now()]);
                 } elseif ($paymentType === 'boost') {
                     $profile = \App\Models\Profile::where('user_id', $userId)->first();
                     if ($profile) {
-                        $from = ($profile->boosted_until && $profile->boosted_until->isFuture())
-                            ? $profile->boosted_until : now();
+                        $from = ($profile->boosted_until && $profile->boosted_until->isFuture()) ? $profile->boosted_until : now();
                         $profile->update(['boosted_until' => $from->addHours(24)]);
                     }
-                    Log::info("Boost activated for user {$userId} via IPN");
-
                 } else {
                     $subscription = Subscription::where('user_id', $userId)->latest()->first();
-                    if ($subscription) {
-                        $subscription->activate(
-                            $payment->payment_method,
-                            $data['data']['receipt_number'] ?? $invoiceToken
-                        );
-                    }
-                    Log::info("Subscription activated for user {$userId} via IPN");
+                    $subscription?->activate($payment->payment_method, $data['data']['receipt_number'] ?? $invoiceToken);
                 }
             }
         }
