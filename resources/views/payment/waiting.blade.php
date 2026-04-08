@@ -1,3 +1,4 @@
+@php $omDeeplink = $omDeeplink ?? null; @endphp
 <!doctype html>
 <html lang="fr">
 <head>
@@ -58,10 +59,66 @@
             @endif
 
             @if(!empty($redirectUrl))
-            <a href="{{ $redirectUrl }}" class="inline-block mt-4 mb-2 px-6 py-3 rounded-2xl text-sm font-bold text-white active:scale-95 transition" style="background: linear-gradient(135deg, #ff5e6c, #ff8a5c);">
-                @if($paymentMethod === 'wave') Ouvrir Wave @elseif($paymentMethod === 'orange_money') Ouvrir Orange Money @endif →
-            </a>
-            <p class="text-[10px] text-white/20 mb-4">Si l'app ne s'ouvre pas automatiquement, clique ci-dessus</p>
+            @if($paymentMethod === 'orange_money')
+                {{-- ── ORANGE MONEY : stratégie multi-app ── --}}
+                <div id="om-apps" class="w-full mt-4 mb-2">
+                    <p class="text-[11px] text-white/30 mb-3">Choisis ton application Orange :</p>
+
+                    {{-- Orange Money officielle --}}
+                    <button onclick="tryOmApp('orangemoney://qrcode.orange.sn/mp/{{ urlencode($omDeeplink ?? '') }}', 'om1')"
+                        id="btn-om1"
+                        class="w-full flex items-center gap-3 px-4 py-3 rounded-2xl mb-2 text-left active:scale-95 transition border border-white/10"
+                        style="background: rgba(255,140,0,0.12);">
+                        <span class="text-2xl">🟠</span>
+                        <div>
+                            <p class="text-sm font-bold text-white">Orange Money</p>
+                            <p class="text-[10px] text-white/35">Application officielle Orange</p>
+                        </div>
+                        <span class="ml-auto text-white/30 text-sm">→</span>
+                    </button>
+
+                    {{-- Maxit --}}
+                    <button onclick="tryOmApp('maxit://home', 'om2')"
+                        id="btn-om2"
+                        class="w-full flex items-center gap-3 px-4 py-3 rounded-2xl mb-2 text-left active:scale-95 transition border border-white/10"
+                        style="background: rgba(255,140,0,0.08);">
+                        <span class="text-2xl">🔶</span>
+                        <div>
+                            <p class="text-sm font-bold text-white">Maxit</p>
+                            <p class="text-[10px] text-white/35">Portefeuille Orange / Free</p>
+                        </div>
+                        <span class="ml-auto text-white/30 text-sm">→</span>
+                    </button>
+
+                    {{-- OM Pay --}}
+                    <button onclick="tryOmApp('ompay://pay', 'om3')"
+                        id="btn-om3"
+                        class="w-full flex items-center gap-3 px-4 py-3 rounded-2xl mb-3 text-left active:scale-95 transition border border-white/10"
+                        style="background: rgba(255,140,0,0.06);">
+                        <span class="text-2xl">💳</span>
+                        <div>
+                            <p class="text-sm font-bold text-white">OM Pay</p>
+                            <p class="text-[10px] text-white/35">Paiement Orange Money</p>
+                        </div>
+                        <span class="ml-auto text-white/30 text-sm">→</span>
+                    </button>
+
+                    {{-- Fallback web --}}
+                    <a href="{{ $redirectUrl }}"
+                        class="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-xs text-white/40 border border-white/10 active:scale-95 transition">
+                        🌐 Payer via le navigateur
+                    </a>
+                    <p id="om-app-error" class="hidden text-[10px] text-orange-400 mt-2">
+                        App non trouvée — utilise "Payer via le navigateur" 👆
+                    </p>
+                </div>
+            @else
+                {{-- Wave : URL HTTPS universelle --}}
+                <a href="{{ $redirectUrl }}" class="inline-block mt-4 mb-2 px-6 py-3 rounded-2xl text-sm font-bold text-white active:scale-95 transition" style="background: linear-gradient(135deg, #3b82f6, #1d4ed8);">
+                    Ouvrir Wave →
+                </a>
+                <p class="text-[10px] text-white/20 mb-4">Si l'app ne s'ouvre pas automatiquement, clique ci-dessus</p>
+            @endif
             @endif
 
             {{-- Spinner + polling --}}
@@ -176,11 +233,66 @@
 
     startPolling();
 
-    // Auto-redirect vers Wave/Orange Money app si URL disponible
-    @if(!empty($redirectUrl))
-    setTimeout(() => {
-        window.location.href = @json($redirectUrl);
-    }, 1500);
+    const isIOS     = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    const isAndroid = /android/i.test(navigator.userAgent);
+
+    @if($paymentMethod === 'wave' && !empty($redirectUrl))
+    // Wave : URL HTTPS universelle, auto-redirect partout
+    setTimeout(() => { window.location.href = @json($redirectUrl); }, 1500);
+    @endif
+
+    @if($paymentMethod === 'orange_money' && !empty($redirectUrl))
+    const omWebUrl   = @json($redirectUrl);
+    const omDeepLink = @json($omDeeplink ?? null); // orangemoney://...
+
+    if (isAndroid && omDeepLink) {
+        // Android : deep link direct
+        setTimeout(() => { window.location.href = omDeepLink; }, 1500);
+    }
+    // iOS : l'utilisateur choisit son app via les boutons (pas d'auto-redirect)
+
+    /**
+     * Tente d'ouvrir une app via son URI scheme.
+     * Utilise la Page Visibility API pour détecter si l'app s'est ouverte.
+     * Si la page reste visible après 2s → app non installée → affiche erreur.
+     */
+    window.tryOmApp = function(scheme, btnId) {
+        const errorEl = document.getElementById('om-app-error');
+        errorEl.classList.add('hidden');
+
+        // Marquer le bouton actif
+        ['om1','om2','om3'].forEach(id => {
+            const b = document.getElementById('btn-' + id);
+            if (b) b.style.opacity = id === btnId ? '1' : '0.4';
+        });
+
+        let appOpened = false;
+        const beforeLeave = Date.now();
+
+        // Écouter la visibilité : si la page se cache, l'app s'est ouverte
+        const onVisibilityChange = () => {
+            if (document.hidden) {
+                appOpened = true;
+                document.removeEventListener('visibilitychange', onVisibilityChange);
+            }
+        };
+        document.addEventListener('visibilitychange', onVisibilityChange);
+
+        // Tenter le deep link
+        window.location.href = scheme;
+
+        // Après 2.2s : si la page est encore visible → app non installée
+        setTimeout(() => {
+            document.removeEventListener('visibilitychange', onVisibilityChange);
+            ['om1','om2','om3'].forEach(id => {
+                const b = document.getElementById('btn-' + id);
+                if (b) b.style.opacity = '1';
+            });
+            if (!document.hidden && !appOpened) {
+                errorEl.classList.remove('hidden');
+            }
+        }, 2200);
+    };
     @endif
     </script>
 </body>
