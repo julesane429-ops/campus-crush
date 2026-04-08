@@ -16,9 +16,6 @@ class SubscriptionController extends Controller
         private PayDunyaService $paydunya
     ) {}
 
-    /**
-     * Page d'abonnement.
-     */
     public function index()
     {
         $user = Auth::user();
@@ -29,9 +26,6 @@ class SubscriptionController extends Controller
         return view('subscription.index', compact('subscription', 'payments', 'paydenyaConfigured'));
     }
 
-    /**
-     * Lancer le paiement.
-     */
     public function pay(Request $request)
     {
         $request->validate([
@@ -42,7 +36,6 @@ class SubscriptionController extends Controller
         $user = Auth::user();
         $subscription = $user->getOrCreateSubscription();
 
-        // Créer le paiement en attente
         $payment = Payment::create([
             'user_id' => $user->id,
             'subscription_id' => $subscription->id,
@@ -60,29 +53,23 @@ class SubscriptionController extends Controller
                 $user->id,
                 $user->name,
                 $user->email,
-                $request->phone_number,
-                $request->payment_method
+                $request->phone_number
             );
 
             if ($result['success']) {
-                // Sauvegarder le token PayDunya pour vérification ultérieure
                 $payment->update([
                     'transaction_id' => $result['token'],
                     'notes' => 'paydunya_redirect',
                 ]);
-
-                // Rediriger vers la page de paiement PayDunya
                 return redirect()->away($result['url']);
             }
 
-            // Échec de création de facture PayDunya
             Log::warning('PayDunya invoice creation failed', ['error' => $result['error']]);
             $payment->update(['status' => 'failed', 'notes' => $result['error']]);
-
             return back()->with('error', 'Erreur de paiement : ' . $result['error']);
         }
 
-        // ── MODE SIMULATION (pas de clés PayDunya) ──
+        // ── MODE SIMULATION ──
         $payment->update(['status' => 'completed']);
         $subscription->activate($request->payment_method, $payment->transaction_id);
 
@@ -90,20 +77,14 @@ class SubscriptionController extends Controller
             ->with('success', 'Paiement de 1 000 FCFA confirmé ! (mode simulation)');
     }
 
-    /**
-     * Retour après paiement réussi sur PayDunya.
-     * PayDunya redirige ici avec ?token=xxx
-     */
     public function success(Request $request)
     {
         $user = Auth::user();
 
-        // Si c'est un retour PayDunya avec token
         if ($token = $request->query('token')) {
             $result = $this->paydunya->checkPaymentStatus($token);
 
             if ($result['success'] && $result['status'] === 'completed') {
-                // Trouver le paiement correspondant
                 $payment = Payment::where('transaction_id', $token)->first();
 
                 if ($payment && $payment->status !== 'completed') {
@@ -124,26 +105,18 @@ class SubscriptionController extends Controller
         return view('subscription.confirm', compact('subscription', 'lastPayment'));
     }
 
-    /**
-     * Retour après annulation sur PayDunya.
-     */
     public function cancel()
     {
         return redirect()->route('subscription.index')
             ->with('error', 'Paiement annulé. Vous pouvez réessayer.');
     }
 
-    /**
-     * Webhook IPN PayDunya - appelé par PayDunya après confirmation du paiement.
-     * C'est le plus fiable car c'est serveur-à-serveur.
-     */
     public function webhook(Request $request)
     {
         $data = $request->all();
 
         Log::info('PayDunya IPN received', $data);
 
-        // Vérifier les données
         if (!isset($data['data']['custom_data']['user_id'])) {
             Log::warning('PayDunya IPN: missing user_id');
             return response()->json(['status' => 'error'], 400);
@@ -154,7 +127,6 @@ class SubscriptionController extends Controller
         $invoiceToken = $data['data']['invoice']['token'] ?? null;
 
         if ($status === 'completed') {
-            // Trouver le paiement
             $payment = Payment::where('transaction_id', $invoiceToken)
                 ->where('user_id', $userId)
                 ->first();
@@ -165,19 +137,16 @@ class SubscriptionController extends Controller
                     'notes' => 'Confirmé par IPN PayDunya',
                 ]);
 
-
-                // Détecter le type de paiement (abonnement, boost, ai_chat...)
                 $paymentType = $data['data']['custom_data']['type'] ?? 'subscription';
 
                 if ($paymentType === 'ai_chat') {
-                    // ✅ Débloquer l'IA Campus Crush
                     \App\Models\User::where('id', $userId)->update([
-                        'ai_chat_unlocked'    => true,
+                        'ai_chat_unlocked' => true,
                         'ai_chat_unlocked_at' => now(),
                     ]);
                     Log::info("AI Chat unlocked for user {$userId} via IPN");
+
                 } elseif ($paymentType === 'boost') {
-                    // ✅ Activer le boost 24h
                     $profile = \App\Models\Profile::where('user_id', $userId)->first();
                     if ($profile) {
                         $from = ($profile->boosted_until && $profile->boosted_until->isFuture())
@@ -185,8 +154,8 @@ class SubscriptionController extends Controller
                         $profile->update(['boosted_until' => $from->addHours(24)]);
                     }
                     Log::info("Boost activated for user {$userId} via IPN");
+
                 } else {
-                    // ✅ Activer l'abonnement mensuel
                     $subscription = Subscription::where('user_id', $userId)->latest()->first();
                     if ($subscription) {
                         $subscription->activate(

@@ -15,9 +15,6 @@ class BoostController extends Controller
         private PayDunyaService $paydunya
     ) {}
 
-    /**
-     * Page de boost — affiche le formulaire de paiement.
-     */
     public function index()
     {
         $user    = Auth::user();
@@ -33,9 +30,6 @@ class BoostController extends Controller
         return view('boost.index', compact('user', 'profile', 'isBoosted', 'boostedUntil'));
     }
 
-    /**
-     * Lancer le paiement du boost.
-     */
     public function pay(Request $request)
     {
         $request->validate([
@@ -50,7 +44,6 @@ class BoostController extends Controller
             return redirect()->route('profile.create');
         }
 
-        // Créer un paiement "boost" en attente
         $payment = Payment::create([
             'user_id'        => $user->id,
             'subscription_id' => $user->getOrCreateSubscription()->id,
@@ -69,8 +62,7 @@ class BoostController extends Controller
                 $user->id,
                 $user->name,
                 $user->email,
-                $request->phone_number,
-                $request->payment_method
+                $request->phone_number
             );
 
             if ($result['success']) {
@@ -94,9 +86,6 @@ class BoostController extends Controller
             ->with('success', 'Boost activé ! Ton profil est en tête de file pendant 24h. (mode simulation)');
     }
 
-    /**
-     * Retour PayDunya après paiement boost réussi.
-     */
     public function success(Request $request)
     {
         $user = Auth::user();
@@ -121,9 +110,6 @@ class BoostController extends Controller
         return view('boost.success', compact('isBoosted', 'boostedUntil'));
     }
 
-    /**
-     * Webhook IPN PayDunya pour les boosts.
-     */
     public function webhook(Request $request)
     {
         $data = $request->all();
@@ -149,14 +135,10 @@ class BoostController extends Controller
         return response()->json(['status' => 'ok']);
     }
 
-    /**
-     * Active le boost pendant 24h pour l'utilisateur.
-     */
     private function activateBoost(int $userId): void
     {
         $profile = \App\Models\Profile::where('user_id', $userId)->first();
         if ($profile) {
-            // Si déjà boosté, prolonge à partir de maintenant
             $from = ($profile->boosted_until && $profile->boosted_until->isFuture())
                 ? $profile->boosted_until
                 : now();

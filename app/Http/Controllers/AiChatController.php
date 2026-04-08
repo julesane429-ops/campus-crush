@@ -19,9 +19,6 @@ class AiChatController extends Controller
         private PayDunyaService $paydunya
     ) {}
 
-    /**
-     * Page principale — liste des bots.
-     */
     public function index()
     {
         $user = Auth::user();
@@ -31,7 +28,6 @@ class AiChatController extends Controller
         $bots = AiChatService::getBots($profile->gender);
         $isUnlocked = $user->ai_chat_unlocked;
 
-        // Sessions actives
         $sessions = AiChatSession::where('user_id', $user->id)
             ->where('is_active', true)
             ->with(['messages' => fn($q) => $q->latest()->take(1)])
@@ -41,15 +37,11 @@ class AiChatController extends Controller
         return view('ai-chat.index', compact('bots', 'isUnlocked', 'sessions'));
     }
 
-    /**
-     * Ouvrir/créer une session de chat avec un bot.
-     */
     public function session(string $botType)
     {
         $user = Auth::user();
         $profile = $user->profile;
 
-        // Support est gratuit, les autres nécessitent le paiement
         if ($botType !== 'support' && !$user->ai_chat_unlocked) {
             return redirect()->route('ai.index')->with('error', 'Débloque l\'IA Campus Crush pour 500 FCFA pour accéder à cette fonctionnalité.');
         }
@@ -58,18 +50,15 @@ class AiChatController extends Controller
         if (!isset($bots[$botType])) abort(404);
         $bot = $bots[$botType];
 
-        // Trouver ou créer la session
         $session = AiChatSession::firstOrCreate(
             ['user_id' => $user->id, 'bot_type' => $botType, 'is_active' => true],
             ['bot_name' => $bot['name'], 'bot_avatar' => $bot['avatar']]
         );
 
-        // Charger les messages
         $messages = AiChatMessage::where('session_id', $session->id)
             ->orderBy('created_at', 'asc')
             ->get();
 
-        // Si première fois, générer le message d'accueil
         if ($messages->isEmpty() && $botType !== 'support') {
             $welcomeMsg = $this->aiChat->chat($session, $this->getWelcomeTrigger($botType));
 
@@ -86,9 +75,6 @@ class AiChatController extends Controller
         return view('ai-chat.session', compact('session', 'messages', 'bot', 'botType'));
     }
 
-    /**
-     * Envoyer un message au bot.
-     */
     public function send(Request $request, int $sessionId)
     {
         $request->validate(['message' => 'required|string|max:500']);
@@ -98,7 +84,6 @@ class AiChatController extends Controller
             ->where('user_id', $user->id)
             ->firstOrFail();
 
-        // Limite : 50 messages/jour (contrôle des coûts)
         $todayCount = AiChatMessage::where('session_id', $session->id)
             ->where('role', 'user')
             ->whereDate('created_at', today())
@@ -111,17 +96,14 @@ class AiChatController extends Controller
             ]);
         }
 
-        // Sauvegarder le message utilisateur
         AiChatMessage::create([
             'session_id' => $session->id,
             'role' => 'user',
             'content' => $request->message,
         ]);
 
-        // Obtenir la réponse IA
         $reply = $this->aiChat->chat($session, $request->message);
 
-        // Sauvegarder la réponse
         AiChatMessage::create([
             'session_id' => $session->id,
             'role' => 'assistant',
@@ -136,9 +118,6 @@ class AiChatController extends Controller
         ]);
     }
 
-    /**
-     * Réinitialiser une session (nouvelle conversation).
-     */
     public function reset(int $sessionId)
     {
         $user = Auth::user();
@@ -152,9 +131,6 @@ class AiChatController extends Controller
         return back()->with('success', 'Conversation réinitialisée !');
     }
 
-    /**
-     * Page de paiement pour débloquer l'IA.
-     */
     public function unlock()
     {
         $user = Auth::user();
@@ -164,9 +140,6 @@ class AiChatController extends Controller
         return view('ai-chat.unlock');
     }
 
-    /**
-     * Payer pour débloquer l'IA.
-     */
     public function pay(Request $request)
     {
         $request->validate([
@@ -197,8 +170,7 @@ class AiChatController extends Controller
                 $user->id,
                 $user->name,
                 $user->email,
-                $request->phone_number,
-                $request->payment_method
+                $request->phone_number
             );
 
             if ($result['success']) {
@@ -220,9 +192,6 @@ class AiChatController extends Controller
         return redirect()->route('ai.index')->with('success', 'IA Campus Crush débloquée ! 🎉');
     }
 
-    /**
-     * Retour PayDunya après paiement.
-     */
     public function paySuccess(Request $request)
     {
         $user = Auth::user();
