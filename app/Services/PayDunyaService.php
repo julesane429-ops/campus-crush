@@ -154,16 +154,17 @@ class PayDunyaService
             Log::info('Softpay Orange Money response', ['data' => $data]);
 
             if ($response->successful() && ($data['success'] ?? false)) {
-                // Privilégier om_url (ouvre l'app OM directement) sinon l'URL QR code
-                $redirectUrl = $data['other_url']['om_url']
-                    ?? $data['url']
-                    ?? null;
+                // om_url  = deep link Android  orangemoney://... (ne marche pas sur iOS/desktop)
+                // web_url = page QR code HTTPS  (marche partout)
+                $omDeepLink = $data['other_url']['om_url'] ?? null;
+                $webUrl     = $data['url'] ?? null;
 
                 return [
-                    'success' => true,
-                    'method' => 'om_redirect',
-                    'url' => $redirectUrl,
-                    'message' => null,
+                    'success'     => true,
+                    'method'      => 'om_redirect',
+                    'url'         => $webUrl,        // URL web HTTPS (fallback universel)
+                    'om_deeplink' => $omDeepLink,    // Deep link Android uniquement
+                    'message'     => null,
                 ];
             }
 
