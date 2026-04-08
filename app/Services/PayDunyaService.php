@@ -246,6 +246,7 @@ class PayDunyaService
                 'error' => 'Erreur de connexion',
             ];
         }
+    }
 
     /**
      * Créer une facture PayDunya pour débloquer l'IA Campus Crush (500 FCFA).
