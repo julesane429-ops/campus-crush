@@ -352,10 +352,15 @@ class PayDunyaService
     }
 
     private function formatPhone(string $phone): string
-    {
-        $phone = preg_replace('/[^0-9]/', '', $phone);
-        if (str_starts_with($phone, '221')) return $phone;
-        if (str_starts_with($phone, '7')) return '221' . $phone;
-        return '221' . $phone;
+{
+    // Retirer tout sauf les chiffres
+    $phone = preg_replace('/[^0-9]/', '', $phone);
+
+    // Si commence par 221, retirer le préfixe (Softpay veut le format local)
+    if (str_starts_with($phone, '221') && strlen($phone) === 12) {
+        $phone = substr($phone, 3);
     }
+
+    return $phone; // Format local : 771234567
+}
 }
