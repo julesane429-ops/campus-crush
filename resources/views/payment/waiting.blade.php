@@ -215,36 +215,11 @@ $maxitUrl = $maxitUrl ?? null;
             if (mobileBtn) mobileBtn.style.display = 'none';
             showQr();
         } else {
-            // ── MOBILE : afficher le bouton, détecter échec du deep link ──
-            // Safari iOS ne supporte pas orangemoney://, on intercepte le clic
-            const btn = document.getElementById('btn-om');
-            if (btn) {
-                btn.addEventListener('click', function (e) {
-                    // Laisser le navigateur tenter l'ouverture
-                    // Si après 2s on est toujours sur la page → l'app ne s'est pas ouverte
-                    const t = Date.now();
-                    setTimeout(function () {
-                        // Si la page est encore visible (l'app ne s'est pas ouverte)
-                        if (!document.hidden && Date.now() - t < 3500) {
-                            // Basculer vers QR + cacher le bouton OM
-                            if (mobileBtn) mobileBtn.style.display = 'none';
-                            showQr();
-                        }
-                    }, 2500);
-                });
-            }
-
-            // Auto-redirect vers Orange Money sur mobile après 1.5s
-            if (omUrl) {
+            // ── MOBILE : cacher le bouton OM, auto-redirect vers Maxit ──
+            if (mobileBtn) mobileBtn.style.display = 'none';
+            if (maxitUrl) {
                 setTimeout(function () {
-                    window.location.href = omUrl;
-                    // Détection d'échec après 2.5s supplémentaires
-                    setTimeout(function () {
-                        if (!document.hidden) {
-                            if (mobileBtn) mobileBtn.style.display = 'none';
-                            showQr();
-                        }
-                    }, 2500);
+                    window.location.href = maxitUrl;
                 }, 1500);
             }
         }
