@@ -420,14 +420,66 @@
         {{-- ═══════════════════════════════ --}}
         <main class="flex-1 flex items-center justify-center px-4 overflow-hidden relative" id="card-area">
 
-            {{-- Empty state --}}
+            {{-- ── EMPTY STATE ── --}}
             <div id="empty-state" class="hidden absolute inset-0 flex flex-col items-center justify-center text-center px-8">
-                <div class="w-20 h-20 rounded-3xl flex items-center justify-center mb-5 empty-float" style="background: linear-gradient(135deg, rgba(255,94,108,0.1), rgba(168,85,247,0.1)); border: 1px solid rgba(255,94,108,0.1);">
-                    <span class="text-4xl">💫</span>
+
+                {{-- Icône flottante --}}
+                <div class="w-24 h-24 rounded-3xl flex items-center justify-center mb-6 empty-float"
+                    style="background: linear-gradient(135deg, rgba(255,94,108,0.08), rgba(168,85,247,0.08));
+                border: 1px solid rgba(255,255,255,0.06);
+                box-shadow: 0 20px 50px rgba(0,0,0,0.2);">
+                    <span class="text-5xl">🌙</span>
                 </div>
-                <h3 class="text-xl font-bold text-white/80 mb-2">Plus de profils !</h3>
-                <p class="text-white/30 text-sm leading-relaxed">Reviens plus tard, de nouvelles personnes t'attendent</p>
+
+                <h3 class="text-2xl font-extrabold text-white/80 mb-2">Tu as tout swipé !</h3>
+                <p class="text-white/30 text-sm leading-relaxed mb-8 max-w-[220px]">
+                    De nouveaux étudiants rejoignent Campus Crush chaque jour
+                </p>
+
+                {{-- Actions --}}
+                <div class="flex flex-col gap-3 w-full max-w-[260px]">
+
+                    {{-- Élargir les filtres --}}
+                    <button onclick="document.getElementById('filter-modal').classList.remove('hidden')"
+                        class="empty-action-btn flex items-center gap-3 px-5 py-3.5 rounded-2xl text-left transition-all duration-200 active:scale-95"
+                        style="background: rgba(255,94,108,0.08); border: 1px solid rgba(255,94,108,0.15);">
+                        <span class="text-xl">🎯</span>
+                        <div>
+                            <p class="text-sm font-semibold text-white/80">Élargis tes filtres</p>
+                            <p class="text-[11px] text-white/30">Découvre plus de profils</p>
+                        </div>
+                    </button>
+
+                    {{-- Inviter un ami --}}
+                    <a href="{{ route('referral.index') }}"
+                        class="empty-action-btn flex items-center gap-3 px-5 py-3.5 rounded-2xl text-left transition-all duration-200 active:scale-95"
+                        style="background: rgba(168,85,247,0.08); border: 1px solid rgba(168,85,247,0.15);">
+                        <span class="text-xl">👥</span>
+                        <div>
+                            <p class="text-sm font-semibold text-white/80">Invite tes amis</p>
+                            <p class="text-[11px] text-white/30">+7 jours premium offerts</p>
+                        </div>
+                    </a>
+
+                    {{-- Voir ses matchs --}}
+                    <a href="{{ route('matches') }}"
+                        class="empty-action-btn flex items-center gap-3 px-5 py-3.5 rounded-2xl text-left transition-all duration-200 active:scale-95"
+                        style="background: rgba(255,193,69,0.08); border: 1px solid rgba(255,193,69,0.15);">
+                        <span class="text-xl">💬</span>
+                        <div>
+                            <p class="text-sm font-semibold text-white/80">Tes matchs t'attendent</p>
+                            <p class="text-[11px] text-white/30">Lance une conversation</p>
+                        </div>
+                    </a>
+                </div>
             </div>
+
+            <style>
+                .empty-action-btn:hover {
+                    filter: brightness(1.15);
+                    transform: translateY(-1px);
+                }
+            </style>
 
             {{-- Card stack container --}}
             <div class="card-stack" id="card-stack"></div>
@@ -789,6 +841,12 @@ ${profile.badge === 'queen'
             const profile = profiles[currentIndex];
             const card = activeCard;
             activeCard = null; // prevent double swipe
+
+            // ── Haptique ──────────────────────────────────
+            if (navigator.vibrate) {
+                if (direction === 'right') navigator.vibrate(12); // like  — pulse court
+                else navigator.vibrate(6); // pass  — quasi imperceptible
+            }
 
             // Animate exit
             card.classList.add(direction === 'right' ? 'exit-right' : 'exit-left');
