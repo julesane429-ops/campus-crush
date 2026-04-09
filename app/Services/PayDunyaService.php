@@ -154,22 +154,18 @@ class PayDunyaService
             Log::info('Softpay Orange Money response', ['data' => $data]);
 
             if ($response->successful() && ($data['success'] ?? false)) {
-                // Deep link Android brut : orangemoney://qrcode.orange.sn/mp/TOKEN
-                $omDeepLink = $data['other_url']['om_url'] ?? null;
-
-                // Universal Link : https://qrcode.orange.sn/mp/TOKEN
-                // Même path que le deep link mais en HTTPS → iOS ouvre Orange Money
-                // ou Maxit automatiquement si installé, sinon Safari (page utilisable)
-                $universalLink = null;
-                if ($omDeepLink && preg_match('/^orangemoney:\/\/(.+)$/', $omDeepLink, $m)) {
-                    $universalLink = 'https://' . $m[1];
-                }
+                // PayDunya retourne deux URLs HTTPS directes (pas de deep link) :
+                // om_url    = Firebase Dynamic Link → ouvre l'app Orange Money (iOS + Android)
+                // maxit_url = lien direct Sugu/Maxit → ouvre Maxit (iOS + Android)
+                $omUrl    = $data['other_url']['om_url']    ?? null;
+                $maxitUrl = $data['other_url']['maxit_url'] ?? null;
 
                 return [
                     'success'     => true,
                     'method'      => 'om_redirect',
-                    'url'         => $universalLink ?? $data['url'] ?? null,
-                    'om_deeplink' => $omDeepLink,
+                    'url'         => $omUrl ?? $data['url'] ?? null, // Orange Money en priorité
+                    'om_url'      => $omUrl,
+                    'maxit_url'   => $maxitUrl,
                     'message'     => null,
                 ];
             }

@@ -66,7 +66,8 @@ class BoostController extends Controller
                         'method'         => $result['method'],
                         'softpayMessage' => null,
                         'redirectUrl'    => $result['url'],
-                        'omDeeplink'     => $result['om_deeplink'] ?? null,
+                        'omUrl'          => $result['om_url']    ?? null,
+                        'maxitUrl'       => $result['maxit_url'] ?? null,
                         'successUrl'     => route('boost.success', ['token' => $result['token']]),
                         'cancelUrl'      => route('boost.index'),
                     ]);

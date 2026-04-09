@@ -1,4 +1,7 @@
-@php $omDeeplink = $omDeeplink ?? null; @endphp
+@php
+$omUrl    = $omUrl    ?? null;
+$maxitUrl = $maxitUrl ?? null;
+@endphp
 <!doctype html>
 <html lang="fr">
 <head>
@@ -58,33 +61,48 @@
             </div>
             @endif
 
-            @if(!empty($redirectUrl))
             @if($paymentMethod === 'orange_money')
-                {{--
-                    Android  → deep link orangemoney:// (ouvre l'app directement)
-                    iOS      → https://qrcode.orange.sn/mp/TOKEN
-                               = Universal Link reconnu par Orange Money ET Maxit
-                               → iOS ouvre automatiquement l'app installée
-                               → sinon Safari avec page de paiement utilisable
-                --}}
-                <a id="om-pay-btn" href="{{ $redirectUrl }}"
-                    class="inline-flex items-center justify-center gap-2 mt-4 mb-1 px-6 py-3.5 rounded-2xl text-sm font-bold text-white active:scale-95 transition w-full"
+            {{-- Deux boutons directs : Orange Money et Maxit --}}
+            <div class="w-full mt-4 mb-2 space-y-2">
+
+                @if(!empty($omUrl))
+                <a href="{{ $omUrl }}" id="btn-om"
+                    class="w-full flex items-center gap-3 px-5 py-3.5 rounded-2xl text-sm font-bold text-white active:scale-95 transition"
                     style="background: linear-gradient(135deg, #f97316, #ea580c);">
-                    <span class="text-lg">🟠</span>
-                    <span id="om-btn-label">Payer avec Orange Money</span>
-                    <span>→</span>
+                    <span class="text-xl">🟠</span>
+                    <div class="text-left">
+                        <div>Orange Money</div>
+                        <div class="text-[10px] font-normal opacity-70">Application officielle Orange</div>
+                    </div>
+                    <span class="ml-auto">→</span>
                 </a>
-                <p class="text-[10px] text-white/20 mb-4">
-                    Ouvre <strong class="text-white/35">Orange Money</strong> ou <strong class="text-white/35">Maxit</strong> pour confirmer
+                @endif
+
+                @if(!empty($maxitUrl))
+                <a href="{{ $maxitUrl }}" id="btn-maxit"
+                    class="w-full flex items-center gap-3 px-5 py-3.5 rounded-2xl text-sm font-bold text-white active:scale-95 transition"
+                    style="background: linear-gradient(135deg, #ea580c, #b45309);">
+                    <span class="text-xl">🔶</span>
+                    <div class="text-left">
+                        <div>Maxit / Sugu</div>
+                        <div class="text-[10px] font-normal opacity-70">Portefeuille Orange Sonatel</div>
+                    </div>
+                    <span class="ml-auto">→</span>
+                </a>
+                @endif
+
+                <p class="text-[10px] text-white/20 text-center pt-1">
+                    Clique sur ton application pour confirmer le paiement
                 </p>
-            @elseif($paymentMethod === 'wave')
-                <a href="{{ $redirectUrl }}"
-                    class="inline-flex items-center justify-center gap-2 mt-4 mb-1 px-6 py-3.5 rounded-2xl text-sm font-bold text-white active:scale-95 transition w-full"
-                    style="background: linear-gradient(135deg, #3b82f6, #1d4ed8);">
-                    <span class="text-lg">🔵</span> Ouvrir Wave →
-                </a>
-                <p class="text-[10px] text-white/20 mb-4">Si l'app ne s'ouvre pas automatiquement, clique ci-dessus</p>
-            @endif
+            </div>
+
+            @elseif($paymentMethod === 'wave' && !empty($redirectUrl))
+            <a href="{{ $redirectUrl }}"
+                class="w-full inline-flex items-center justify-center gap-2 mt-4 mb-2 px-6 py-3.5 rounded-2xl text-sm font-bold text-white active:scale-95 transition"
+                style="background: linear-gradient(135deg, #3b82f6, #1d4ed8);">
+                <span class="text-xl">🔵</span> Ouvrir Wave →
+            </a>
+            <p class="text-[10px] text-white/20 mb-4">Si l'app ne s'ouvre pas automatiquement, clique ci-dessus</p>
             @endif
 
             {{-- Spinner + polling --}}
@@ -201,37 +219,24 @@
 
     const isAndroid = /android/i.test(navigator.userAgent);
     const isIOS     = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    const isMobile  = isAndroid || isIOS;
 
     @if($paymentMethod === 'wave' && !empty($redirectUrl))
+        // Wave : URL HTTPS universelle, auto-redirect
         setTimeout(() => { window.location.href = @json($redirectUrl); }, 1500);
     @endif
 
-    @if($paymentMethod === 'orange_money' && !empty($redirectUrl))
+    @if($paymentMethod === 'orange_money')
     (function() {
-        const universalLink = @json($redirectUrl);   // https://qrcode.orange.sn/mp/TOKEN
-        const androidLink   = @json($omDeeplink);    // orangemoney://qrcode.orange.sn/mp/TOKEN
-        const btn           = document.getElementById('om-pay-btn');
-        const label         = document.getElementById('om-btn-label');
+        const omUrl    = @json($omUrl);    // Firebase Dynamic Link Orange Money
+        const maxitUrl = @json($maxitUrl); // Lien direct Maxit/Sugu
 
-        if (isAndroid && androidLink) {
-            // Android : deep link natif, ouvre Orange Money directement
-            if (btn) btn.href = androidLink;
-            if (label) label.textContent = 'Ouvrir Orange Money';
-            setTimeout(() => { window.location.href = androidLink; }, 1500);
-
-        } else if (isIOS) {
-            // iOS : Universal Link HTTPS
-            // iOS intercepte https://qrcode.orange.sn et ouvre Orange Money ou Maxit
-            // si l'app est installée. Sinon : Safari avec page de paiement.
-            if (btn) btn.href = universalLink;
-            if (label) label.textContent = 'Ouvrir Orange Money / Maxit';
-            setTimeout(() => { window.location.href = universalLink; }, 1500);
-
-        } else {
-            // Desktop : lien web sans auto-redirect
-            if (btn) btn.href = universalLink;
-            if (label) label.textContent = 'Payer avec Orange Money';
+        // Sur mobile : auto-ouvrir Orange Money en priorité après 1.5s
+        // (Firebase Dynamic Link gère iOS et Android automatiquement)
+        if (isMobile && omUrl) {
+            setTimeout(() => { window.location.href = omUrl; }, 1500);
         }
+        // Sur desktop : l'utilisateur clique le bouton de son choix
     })();
     @endif
     </script>
