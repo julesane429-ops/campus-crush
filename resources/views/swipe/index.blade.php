@@ -652,6 +652,8 @@
             startY = 0,
             currentDragX = 0;
         let activeCard = null;
+        let tapStartTime = 0;   // double-tap
+        let lastTapTime = 0;    // double-tap
 
         const cardStack = document.getElementById('card-stack');
         const emptyState = document.getElementById('empty-state');
@@ -751,6 +753,7 @@ ${profile.badge === 'queen'
             startX = e.type === 'touchstart' ? e.touches[0].clientX : e.clientX;
             startY = e.type === 'touchstart' ? e.touches[0].clientY : e.clientY;
             currentDragX = 0;
+            tapStartTime = Date.now();
             activeCard.classList.remove('spring-back');
         }
 
@@ -823,6 +826,22 @@ ${profile.badge === 'queen'
                     c.style.opacity = '';
                     c.style.filter = '';
                 });
+
+                // ── Double-tap to like ───────────────────────
+                const tapElapsed = Date.now() - tapStartTime;
+                if (Math.abs(currentDragX) < 15 && tapElapsed < 250) {
+                    const now = Date.now();
+                    if (now - lastTapTime < 350) {
+                        // C'est un double-tap → Like !
+                        lastTapTime = 0;
+                        showDoubleTapHeart(activeCard);
+                        const ls = activeCard.querySelector('.stamp-like');
+                        if (ls) ls.classList.add('visible');
+                        swipe('right');
+                        return;
+                    }
+                    lastTapTime = now;
+                }
             }
         }
 
@@ -1035,6 +1054,41 @@ ${profile.badge === 'queen'
             const d = document.createElement('div');
             d.textContent = text;
             return d.innerHTML;
+        }
+
+        // ═══════════════════════════════════════════
+        // DOUBLE-TAP HEART ANIMATION
+        // ═══════════════════════════════════════════
+        function showDoubleTapHeart(card) {
+            if (!card) return;
+            const heart = document.createElement('div');
+            heart.textContent = '❤️';
+            heart.style.cssText = [
+                'position:absolute',
+                'left:50%',
+                'top:50%',
+                'transform:translate(-50%,-50%) scale(0)',
+                'font-size:90px',
+                'pointer-events:none',
+                'z-index:20',
+                'filter:drop-shadow(0 4px 20px rgba(255,94,108,0.7))',
+                'transition:transform 0.25s cubic-bezier(0.22,1,0.36,1)',
+            ].join(';');
+            card.style.position = 'relative'; // s'assure que l'absolute se positionne bien
+            card.appendChild(heart);
+            // Entrée
+            requestAnimationFrame(() => {
+                heart.style.transform = 'translate(-50%,-50%) scale(1)';
+                // Vibration haptique spéciale double-tap
+                if (navigator.vibrate) navigator.vibrate([10, 30, 15]);
+                // Sortie
+                setTimeout(() => {
+                    heart.style.transition = 'transform 0.2s ease, opacity 0.25s ease';
+                    heart.style.transform = 'translate(-50%,-50%) scale(1.15)';
+                    heart.style.opacity = '0';
+                    setTimeout(() => heart.remove(), 280);
+                }, 520);
+            });
         }
 
         // ═══════════════════════════════════════════

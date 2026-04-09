@@ -198,6 +198,67 @@
         100% { transform: scale(1); opacity: 1; }
     }
     </style>
+
+    <script>
+    // ── Pull-to-refresh ───────────────────────────────────────────────
+    (function () {
+        let startY = 0, pulling = false, pullDist = 0;
+        const THRESHOLD = 72;
+
+        const wrap = document.createElement('div');
+        wrap.style.cssText = [
+            'position:fixed', 'top:0', 'left:0', 'right:0', 'z-index:200',
+            'display:flex', 'align-items:center', 'justify-content:center',
+            'height:0', 'overflow:hidden', 'pointer-events:none',
+            'background:rgba(255,94,108,0.07)',
+            'backdrop-filter:blur(12px)',
+            'border-bottom:1px solid rgba(255,94,108,0.10)',
+            'transition:height 0.12s ease',
+        ].join(';');
+        wrap.innerHTML = `
+            <div id="_ptr_inner" style="display:flex;align-items:center;gap:8px;opacity:0;transition:opacity 0.18s;">
+                <span id="_ptr_icon" style="font-size:16px;display:inline-block;transition:transform 0.2s;">↓</span>
+                <span id="_ptr_txt" style="font-size:11px;color:rgba(255,255,255,0.45);font-family:'Sora',sans-serif;font-weight:500;">Tirer pour rafraîchir</span>
+            </div>`;
+        document.body.appendChild(wrap);
+
+        const inner = document.getElementById('_ptr_inner');
+        const icon  = document.getElementById('_ptr_icon');
+        const txt   = document.getElementById('_ptr_txt');
+
+        document.addEventListener('touchstart', e => {
+            if (window.scrollY === 0) { startY = e.touches[0].clientY; pulling = true; }
+        }, { passive: true });
+
+        document.addEventListener('touchmove', e => {
+            if (!pulling) return;
+            pullDist = Math.max(0, e.touches[0].clientY - startY);
+            if (pullDist <= 0) return;
+            wrap.style.height   = Math.min(pullDist * 0.42, 56) + 'px';
+            inner.style.opacity = Math.min(pullDist / THRESHOLD, 1);
+            const ready = pullDist >= THRESHOLD;
+            icon.style.transform = ready ? 'rotate(180deg)' : 'rotate(0deg)';
+            icon.textContent = ready ? '↑' : '↓';
+            txt.textContent  = ready ? 'Relâcher pour rafraîchir' : 'Tirer pour rafraîchir';
+        }, { passive: true });
+
+        document.addEventListener('touchend', () => {
+            if (!pulling) return;
+            pulling = false;
+            if (pullDist >= THRESHOLD) {
+                icon.textContent    = '⟳';
+                txt.textContent     = 'Chargement...';
+                inner.style.opacity = '1';
+                wrap.style.height   = '48px';
+                setTimeout(() => window.location.reload(), 280);
+            } else {
+                wrap.style.height   = '0';
+                inner.style.opacity = '0';
+            }
+            pullDist = 0;
+        });
+    })();
+    </script>
     @include('components.feature-reminders')
      @auth
     @include('components.ai-chat-fab')
