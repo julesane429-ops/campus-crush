@@ -154,17 +154,26 @@ class PayDunyaService
             Log::info('Softpay Orange Money response', ['data' => $data]);
 
             if ($response->successful() && ($data['success'] ?? false)) {
-                // om_url  = deep link Android  orangemoney://... (ne marche pas sur iOS/desktop)
-                // web_url = page QR code HTTPS  (marche partout)
+                // Deep link Android : orangemoney://qrcode.orange.sn/mp/TOKEN
                 $omDeepLink = $data['other_url']['om_url'] ?? null;
-                $webUrl     = $data['url'] ?? null;
+
+                // Universal Link iOS : https://qrcode.orange.sn/mp/TOKEN
+                // Construit depuis le deep link (même path, scheme HTTPS)
+                // → ouvre Orange Money/OM Pay si installé, Safari sinon
+                $universalLink = null;
+                if ($omDeepLink && preg_match('/^orangemoney:\/\/(.+)$/', $omDeepLink, $m)) {
+                    $universalLink = 'https://' . $m[1];
+                }
+
+                // Fallback PayDunya si aucune URL Orange disponible
+                $webUrl = $universalLink ?? $data['url'] ?? null;
 
                 return [
-                    'success'     => true,
-                    'method'      => 'om_redirect',
-                    'url'         => $webUrl,        // URL web HTTPS (fallback universel)
-                    'om_deeplink' => $omDeepLink,    // Deep link Android uniquement
-                    'message'     => null,
+                    'success'      => true,
+                    'method'       => 'om_redirect',
+                    'url'          => $webUrl,       // Universal Link HTTPS (iOS + Android)
+                    'om_deeplink'  => $omDeepLink,   // Deep link natif (Android uniquement)
+                    'message'      => null,
                 ];
             }
 

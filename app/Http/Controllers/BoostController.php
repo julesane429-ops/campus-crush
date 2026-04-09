@@ -60,14 +60,15 @@ class BoostController extends Controller
 
                 if (in_array($result['method'], ['wave_redirect', 'om_redirect']) && $result['url']) {
                     return view('payment.waiting', [
-                        'token' => $result['token'],
-                        'paymentMethod' => $request->payment_method,
-                        'amount' => 500,
-                        'method' => $result['method'],
+                        'token'          => $result['token'],
+                        'paymentMethod'  => $request->payment_method,
+                        'amount'         => 500,
+                        'method'         => $result['method'],
                         'softpayMessage' => null,
-                        'redirectUrl' => $result['url'],
-                        'successUrl' => route('boost.success', ['token' => $result['token']]),
-                        'cancelUrl' => route('boost.index'),
+                        'redirectUrl'    => $result['url'],
+                        'omDeeplink'     => $result['om_deeplink'] ?? null,
+                        'successUrl'     => route('boost.success', ['token' => $result['token']]),
+                        'cancelUrl'      => route('boost.index'),
                     ]);
                 }
 

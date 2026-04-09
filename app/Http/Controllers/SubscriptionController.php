@@ -62,14 +62,15 @@ class SubscriptionController extends Controller
                 // Wave / Orange Money : rediriger vers l'app mobile
                 if (in_array($result['method'], ['wave_redirect', 'om_redirect']) && $result['url']) {
                     return view('payment.waiting', [
-                        'token' => $result['token'],
-                        'paymentMethod' => $request->payment_method,
-                        'amount' => 1000,
-                        'method' => $result['method'],
+                        'token'          => $result['token'],
+                        'paymentMethod'  => $request->payment_method,
+                        'amount'         => 1000,
+                        'method'         => $result['method'],
                         'softpayMessage' => null,
-                        'redirectUrl' => $result['url'],
-                        'successUrl' => route('subscription.success', ['token' => $result['token']]),
-                        'cancelUrl' => route('subscription.index'),
+                        'redirectUrl'    => $result['url'],
+                        'omDeeplink'     => $result['om_deeplink'] ?? null,
+                        'successUrl'     => route('subscription.success', ['token' => $result['token']]),
+                        'cancelUrl'      => route('subscription.index'),
                     ]);
                 }
 
