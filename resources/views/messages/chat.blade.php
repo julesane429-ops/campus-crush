@@ -555,7 +555,7 @@ $otherPhoto = $otherProfile?->photo_url ?? 'https://ui-avatars.com/api/?backgrou
 
         function esc(text) {
             if (!text) return '';
-            return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+            return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
         }
 
         // ═══════════════════════════════════════
