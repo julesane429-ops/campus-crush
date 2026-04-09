@@ -61,32 +61,27 @@
             @if(!empty($redirectUrl))
             @if($paymentMethod === 'orange_money')
                 {{--
-                    Orange Money iOS/Android :
-                    - Android → deep link natif orangemoney://... (ouvre l'app directement)
-                    - iOS     → Universal Link https://qrcode.orange.sn/mp/... (ouvre OM ou OM Pay
-                                si installé via Universal Links, sinon Safari pour payer en ligne)
+                    Android  → deep link orangemoney:// (ouvre l'app directement)
+                    iOS      → https://qrcode.orange.sn/mp/TOKEN
+                               = Universal Link reconnu par Orange Money ET Maxit
+                               → iOS ouvre automatiquement l'app installée
+                               → sinon Safari avec page de paiement utilisable
                 --}}
-                <div id="om-cta" class="w-full mt-4 mb-2">
-                    {{-- Bouton principal (JS remplacera le href selon la plateforme) --}}
-                    <a id="om-btn" href="{{ $redirectUrl }}"
-                        class="w-full flex items-center justify-center gap-3 px-5 py-3.5 rounded-2xl text-sm font-bold text-white active:scale-95 transition mb-2"
-                        style="background: linear-gradient(135deg, #f97316, #ea580c);">
-                        <span class="text-xl">🟠</span>
-                        <span id="om-btn-label">Payer avec Orange Money</span>
-                        <span>→</span>
-                    </a>
-                    {{-- Fallback web toujours visible en dessous --}}
-                    <a href="{{ $redirectUrl }}"
-                        class="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs text-white/35 border border-white/10 active:scale-95 transition">
-                        🌐 Payer via le navigateur
-                    </a>
-                </div>
-            @else
-                {{-- Wave : URL HTTPS universelle --}}
+                <a id="om-pay-btn" href="{{ $redirectUrl }}"
+                    class="inline-flex items-center justify-center gap-2 mt-4 mb-1 px-6 py-3.5 rounded-2xl text-sm font-bold text-white active:scale-95 transition w-full"
+                    style="background: linear-gradient(135deg, #f97316, #ea580c);">
+                    <span class="text-lg">🟠</span>
+                    <span id="om-btn-label">Payer avec Orange Money</span>
+                    <span>→</span>
+                </a>
+                <p class="text-[10px] text-white/20 mb-4">
+                    Ouvre <strong class="text-white/35">Orange Money</strong> ou <strong class="text-white/35">Maxit</strong> pour confirmer
+                </p>
+            @elseif($paymentMethod === 'wave')
                 <a href="{{ $redirectUrl }}"
-                    class="inline-block mt-4 mb-2 px-6 py-3 rounded-2xl text-sm font-bold text-white active:scale-95 transition"
+                    class="inline-flex items-center justify-center gap-2 mt-4 mb-1 px-6 py-3.5 rounded-2xl text-sm font-bold text-white active:scale-95 transition w-full"
                     style="background: linear-gradient(135deg, #3b82f6, #1d4ed8);">
-                    Ouvrir Wave →
+                    <span class="text-lg">🔵</span> Ouvrir Wave →
                 </a>
                 <p class="text-[10px] text-white/20 mb-4">Si l'app ne s'ouvre pas automatiquement, clique ci-dessus</p>
             @endif
@@ -204,39 +199,38 @@
 
     startPolling();
 
-    const isIOS     = /iphone|ipad|ipod/i.test(navigator.userAgent);
     const isAndroid = /android/i.test(navigator.userAgent);
+    const isIOS     = /iphone|ipad|ipod/i.test(navigator.userAgent);
 
     @if($paymentMethod === 'wave' && !empty($redirectUrl))
-        // Wave : URL HTTPS universelle, fonctionne partout
         setTimeout(() => { window.location.href = @json($redirectUrl); }, 1500);
     @endif
 
     @if($paymentMethod === 'orange_money' && !empty($redirectUrl))
     (function() {
-        const androidDeepLink = @json($omDeeplink);  // orangemoney://qrcode.orange.sn/mp/TOKEN
-        const universalLink   = @json($redirectUrl); // https://qrcode.orange.sn/mp/TOKEN
-        const btn             = document.getElementById('om-btn');
-        const btnLabel        = document.getElementById('om-btn-label');
+        const universalLink = @json($redirectUrl);   // https://qrcode.orange.sn/mp/TOKEN
+        const androidLink   = @json($omDeeplink);    // orangemoney://qrcode.orange.sn/mp/TOKEN
+        const btn           = document.getElementById('om-pay-btn');
+        const label         = document.getElementById('om-btn-label');
 
-        if (isAndroid && androidDeepLink) {
-            // Android : deep link natif → ouvre l'app Orange Money directement
-            btn.href = androidDeepLink;
-            btnLabel.textContent = 'Ouvrir Orange Money';
-            setTimeout(() => { window.location.href = androidDeepLink; }, 1500);
+        if (isAndroid && androidLink) {
+            // Android : deep link natif, ouvre Orange Money directement
+            if (btn) btn.href = androidLink;
+            if (label) label.textContent = 'Ouvrir Orange Money';
+            setTimeout(() => { window.location.href = androidLink; }, 1500);
 
         } else if (isIOS) {
             // iOS : Universal Link HTTPS
-            // Si Orange Money ou OM Pay est installé → iOS ouvre l'app automatiquement
-            // Sinon → Safari, l'utilisateur peut payer en ligne
-            btn.href = universalLink;
-            btnLabel.textContent = 'Ouvrir Orange Money / OM Pay';
+            // iOS intercepte https://qrcode.orange.sn et ouvre Orange Money ou Maxit
+            // si l'app est installée. Sinon : Safari avec page de paiement.
+            if (btn) btn.href = universalLink;
+            if (label) label.textContent = 'Ouvrir Orange Money / Maxit';
             setTimeout(() => { window.location.href = universalLink; }, 1500);
 
         } else {
-            // Desktop : lien web, pas d'auto-redirect
-            btn.href = universalLink;
-            btnLabel.textContent = 'Payer avec Orange Money (web)';
+            // Desktop : lien web sans auto-redirect
+            if (btn) btn.href = universalLink;
+            if (label) label.textContent = 'Payer avec Orange Money';
         }
     })();
     @endif
