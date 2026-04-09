@@ -265,7 +265,117 @@
         .safe-bottom {
             padding-bottom: max(env(safe-area-inset-bottom, 0px), 8px);
         }
+
+        @keyframes matchReveal {
+            0% {
+                opacity: 0;
+            }
+
+            100% {
+                opacity: 1;
+            }
+        }
+
+        @keyframes photoSlideLeft {
+            0% {
+                opacity: 0;
+                transform: translateX(-40px) scale(0.85) rotate(-4deg);
+            }
+
+            100% {
+                opacity: 1;
+                transform: translateX(0) scale(1) rotate(-4deg);
+            }
+        }
+
+        @keyframes photoSlideRight {
+            0% {
+                opacity: 0;
+                transform: translateX(40px) scale(0.85) rotate(4deg);
+            }
+
+            100% {
+                opacity: 1;
+                transform: translateX(0) scale(1) rotate(4deg);
+            }
+        }
+
+        @keyframes heartBounce {
+            0% {
+                opacity: 0;
+                transform: translate(-50%, -50%) scale(0);
+            }
+
+            60% {
+                transform: translate(-50%, -50%) scale(1.3);
+            }
+
+            80% {
+                transform: translate(-50%, -50%) scale(0.9);
+            }
+
+            100% {
+                opacity: 1;
+                transform: translate(-50%, -50%) scale(1);
+            }
+        }
+
+        @keyframes titleSlide {
+            0% {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes confettiDrop {
+            0% {
+                transform: translateY(-20px) rotate(0deg);
+                opacity: 1;
+            }
+
+            100% {
+                transform: translateY(100vh) rotate(720deg);
+                opacity: 0;
+            }
+        }
+
+        .match-photo-left {
+            animation: photoSlideLeft 0.55s cubic-bezier(0.22, 1, 0.36, 1) 0.2s both;
+        }
+
+        .match-photo-right {
+            animation: photoSlideRight 0.55s cubic-bezier(0.22, 1, 0.36, 1) 0.2s both;
+        }
+
+        .match-heart {
+            animation: heartBounce 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.5s both;
+        }
+
+        .match-title {
+            animation: titleSlide 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.65s both;
+        }
+
+        .match-btns {
+            animation: titleSlide 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.8s both;
+        }
+
+        .confetti-piece {
+            position: fixed;
+            top: -10px;
+            width: 8px;
+            height: 8px;
+            border-radius: 2px;
+            pointer-events: none;
+            z-index: 9999;
+            animation: confettiDrop linear both;
+        }
     </style>
+
 </head>
 
 <body class="h-full text-white overflow-hidden">
@@ -357,19 +467,66 @@
         @include('components.bottom-nav')
     </div>
 
-    {{-- ═══════════════════════════════ --}}
-    {{-- MATCH POPUP --}}
-    {{-- ═══════════════════════════════ --}}
-    <div id="match-popup" class="hidden fixed inset-0 z-50 flex items-center justify-center p-6" style="background:rgba(12,10,26,0.92); backdrop-filter:blur(20px);">
-        <div class="match-pop text-center max-w-xs w-full">
-            <div class="text-6xl mb-4">🎉</div>
-            <h2 class="text-3xl font-extrabold cc-gradient-text mb-2">C'est un Match !</h2>
-            <p class="text-white/40 text-sm mb-8">Toi et <span id="match-name" class="text-white/70 font-medium">...</span> vous êtes likés</p>
-            <div class="flex flex-col gap-3">
-                <button id="send-message" class="w-full py-3.5 rounded-2xl font-semibold text-white text-sm transition" style="background: linear-gradient(135deg, #ff5e6c, #ff8a5c); box-shadow: 0 8px 30px rgba(255,94,108,0.3);">
+    {{-- ── MATCH POPUP IMMERSIF ── --}}
+    <div id="match-popup" class="hidden fixed inset-0 z-50 flex flex-col items-center justify-center"
+        style="background: rgba(10,8,22,0.96); backdrop-filter: blur(24px); animation: matchReveal 0.3s ease both;">
+
+        {{-- Confettis container --}}
+        <div id="confetti-container" class="fixed inset-0 pointer-events-none overflow-hidden z-[9998]"></div>
+
+        {{-- Contenu --}}
+        <div class="flex flex-col items-center px-8 w-full max-w-sm">
+
+            {{-- Photos côte à côte --}}
+            <div class="relative flex items-center justify-center mb-8" style="height: 160px; width: 100%;">
+                {{-- Photo MOI --}}
+                <div class="match-photo-left absolute w-28 h-28 rounded-3xl overflow-hidden"
+                    style="left: 50%; margin-left: -90px; transform: rotate(-4deg);
+                        box-shadow: -8px 8px 30px rgba(0,0,0,0.5), 0 0 0 3px rgba(255,94,108,0.4);">
+                    <img src="{{ auth()->user()->profile->photo_url }}"
+                        class="w-full h-full object-cover" alt="Moi">
+                </div>
+
+                {{-- Cœur central --}}
+                <div class="match-heart absolute w-12 h-12 rounded-2xl flex items-center justify-center z-10"
+                    style="left: 50%; top: 50%; transform: translate(-50%,-50%);
+                        background: linear-gradient(135deg,#ff5e6c,#ff8a5c);
+                        box-shadow: 0 4px 20px rgba(255,94,108,0.6);">
+                    <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                    </svg>
+                </div>
+
+                {{-- Photo MATCH --}}
+                <div class="match-photo-right absolute w-28 h-28 rounded-3xl overflow-hidden"
+                    style="left: 50%; margin-left: 18px; transform: rotate(4deg);
+                        box-shadow: 8px 8px 30px rgba(0,0,0,0.5), 0 0 0 3px rgba(255,193,69,0.4);">
+                    <img id="match-photo" src="" class="w-full h-full object-cover" alt="Match">
+                </div>
+            </div>
+
+            {{-- Texte --}}
+            <div class="match-title text-center mb-8">
+                <div class="text-xs font-semibold tracking-widest text-white/30 uppercase mb-2">Nouveau match 🎉</div>
+                <h2 class="text-4xl font-extrabold mb-2"
+                    style="background: linear-gradient(135deg,#ff5e6c,#ffc145); -webkit-background-clip:text; -webkit-text-fill-color:transparent;">
+                    C'est un Match !
+                </h2>
+                <p class="text-white/40 text-sm">
+                    Toi et <span id="match-name" class="text-white/80 font-semibold">...</span> vous êtes likés
+                </p>
+            </div>
+
+            {{-- Boutons --}}
+            <div class="match-btns flex flex-col gap-3 w-full">
+                <button id="send-message"
+                    class="w-full py-4 rounded-2xl font-semibold text-white text-[15px] transition active:scale-95"
+                    style="background: linear-gradient(135deg,#ff5e6c,#ff8a5c); box-shadow: 0 8px 30px rgba(255,94,108,0.35);">
                     Envoyer un message 💬
                 </button>
-                <button id="keep-swiping" class="w-full py-3.5 rounded-2xl font-medium text-white/40 text-sm border border-white/10 hover:bg-white/5 transition">
+                <button id="keep-swiping"
+                    class="w-full py-3.5 rounded-2xl font-medium text-white/35 text-sm border transition active:scale-95 hover:bg-white/5"
+                    style="border-color: rgba(255,255,255,0.08);">
                     Continuer à swiper
                 </button>
             </div>
@@ -649,8 +806,19 @@ ${profile.badge === 'queen'
                     const data = await res.json();
                     if (data.match) {
                         currentMatchId = data.match_id;
+
+                        // Remplir les infos du popup
                         document.getElementById('match-name').textContent = profile.name;
-                        setTimeout(() => matchPopup.classList.remove('hidden'), 400);
+                        document.getElementById('match-photo').src = profile.photo || '';
+
+                        // Haptique
+                        if (navigator.vibrate) navigator.vibrate([30, 40, 80]);
+
+                        // Afficher le popup
+                        setTimeout(() => {
+                            matchPopup.classList.remove('hidden');
+                            launchConfetti();
+                        }, 400);
                     }
                 } catch (e) {
                     console.error('Like error:', e);
@@ -700,6 +868,45 @@ ${profile.badge === 'queen'
             if (currentMatchId) window.location.href = '/messages/' + currentMatchId;
         });
 
+        // ═══════════════════════════════════════
+        // CONFETTIS
+        // ═══════════════════════════════════════
+        function launchConfetti() {
+            const container = document.getElementById('confetti-container');
+            if (!container) return;
+            container.innerHTML = '';
+
+            const colors = ['#ff5e6c', '#ffc145', '#a855f7', '#3b82f6', '#10b981', '#fff'];
+            const count = 55;
+
+            for (let i = 0; i < count; i++) {
+                const el = document.createElement('div');
+                el.className = 'confetti-piece';
+
+                const size = Math.random() * 8 + 5;
+                const color = colors[Math.floor(Math.random() * colors.length)];
+                const left = Math.random() * 100;
+                const delay = Math.random() * 0.8;
+                const dur = Math.random() * 1.5 + 1.8;
+                const isCirc = Math.random() > 0.5;
+
+                el.style.cssText = `
+            width:${size}px; height:${size}px;
+            background:${color};
+            left:${left}vw;
+            border-radius:${isCirc ? '50%' : '2px'};
+            animation-duration:${dur}s;
+            animation-delay:${delay}s;
+            opacity: 0.9;
+        `;
+                container.appendChild(el);
+            }
+
+            // Nettoyer après 4s
+            setTimeout(() => {
+                container.innerHTML = '';
+            }, 4000);
+        }
         // ═══════════════════════════════════════════
         // FILTERS
         // ═══════════════════════════════════════════
