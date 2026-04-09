@@ -798,7 +798,7 @@ ${profile.badge === 'queen'
             });
         }
 
-        function onDragEnd() {
+        function onDragEnd(fromTouch) {
             if (!isDragging || !activeCard) return;
             isDragging = false;
 
@@ -827,30 +827,32 @@ ${profile.badge === 'queen'
                     c.style.filter = '';
                 });
 
-                // ── Double-tap to like ───────────────────────
-                const tapElapsed = Date.now() - tapStartTime;
-                if (Math.abs(currentDragX) < 15 && tapElapsed < 250) {
-                    const now = Date.now();
-                    if (now - lastTapTime < 350) {
-                        // C'est un double-tap → Like !
-                        lastTapTime = 0;
-                        showDoubleTapHeart(activeCard);
-                        const ls = activeCard.querySelector('.stamp-like');
-                        if (ls) ls.classList.add('visible');
-                        swipe('right');
-                        return;
+                // ── Double-tap to like (touch uniquement, évite le double-fire mouseup) ──
+                if (fromTouch) {
+                    const tapElapsed = Date.now() - tapStartTime;
+                    if (Math.abs(currentDragX) < 15 && tapElapsed < 250) {
+                        const now = Date.now();
+                        if (now - lastTapTime < 350) {
+                            // C'est un double-tap → Like !
+                            lastTapTime = 0;
+                            showDoubleTapHeart(activeCard);
+                            const ls = activeCard.querySelector('.stamp-like');
+                            if (ls) ls.classList.add('visible');
+                            swipe('right');
+                            return;
+                        }
+                        lastTapTime = now;
                     }
-                    lastTapTime = now;
                 }
             }
         }
 
         document.addEventListener('mousemove', onDragMove);
-        document.addEventListener('touchmove', onDragMove, {
-            passive: true
-        });
-        document.addEventListener('mouseup', onDragEnd);
-        document.addEventListener('touchend', onDragEnd);
+        document.addEventListener('touchmove', onDragMove, { passive: true });
+        // On sépare mouseup et touchend pour éviter le double-fire mobile
+        // (un tap touch déclenche touchend puis mouseup → onDragEnd appelé 2x en 0ms)
+        document.addEventListener('mouseup',  () => onDragEnd(false));
+        document.addEventListener('touchend', () => onDragEnd(true));
 
         // ═══════════════════════════════════════════
         // SWIPE ACTION
@@ -1061,33 +1063,38 @@ ${profile.badge === 'queen'
         // ═══════════════════════════════════════════
         function showDoubleTapHeart(card) {
             if (!card) return;
+            // On positionne le cœur sur le body en fixed pour qu'il reste
+            // visible même quand la carte part en exit-right
+            const rect = card.getBoundingClientRect();
+            const cx = rect.left + rect.width  / 2;
+            const cy = rect.top  + rect.height / 2;
+
             const heart = document.createElement('div');
             heart.textContent = '❤️';
             heart.style.cssText = [
-                'position:absolute',
-                'left:50%',
-                'top:50%',
+                'position:fixed',
+                `left:${cx}px`,
+                `top:${cy}px`,
                 'transform:translate(-50%,-50%) scale(0)',
                 'font-size:90px',
                 'pointer-events:none',
-                'z-index:20',
-                'filter:drop-shadow(0 4px 20px rgba(255,94,108,0.7))',
-                'transition:transform 0.25s cubic-bezier(0.22,1,0.36,1)',
+                'z-index:9999',
+                'filter:drop-shadow(0 4px 24px rgba(255,94,108,0.75))',
+                'transition:transform 0.22s cubic-bezier(0.22,1,0.36,1)',
             ].join(';');
-            card.style.position = 'relative'; // s'assure que l'absolute se positionne bien
-            card.appendChild(heart);
+            document.body.appendChild(heart);
+
             // Entrée
             requestAnimationFrame(() => {
                 heart.style.transform = 'translate(-50%,-50%) scale(1)';
-                // Vibration haptique spéciale double-tap
                 if (navigator.vibrate) navigator.vibrate([10, 30, 15]);
                 // Sortie
                 setTimeout(() => {
-                    heart.style.transition = 'transform 0.2s ease, opacity 0.25s ease';
-                    heart.style.transform = 'translate(-50%,-50%) scale(1.15)';
-                    heart.style.opacity = '0';
-                    setTimeout(() => heart.remove(), 280);
-                }, 520);
+                    heart.style.transition = 'transform 0.2s ease, opacity 0.22s ease';
+                    heart.style.transform  = 'translate(-50%,-50%) scale(1.15)';
+                    heart.style.opacity    = '0';
+                    setTimeout(() => heart.remove(), 250);
+                }, 480);
             });
         }
 

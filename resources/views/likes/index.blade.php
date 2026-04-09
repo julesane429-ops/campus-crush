@@ -201,9 +201,11 @@
 
     <script>
     // ── Pull-to-refresh ───────────────────────────────────────────────
+    // Sur cette page, window est le scroll container (body min-h-screen)
     (function () {
         let startY = 0, pulling = false, pullDist = 0;
         const THRESHOLD = 72;
+        const getScrollTop = () => window.pageYOffset || document.documentElement.scrollTop || 0;
 
         const wrap = document.createElement('div');
         wrap.style.cssText = [
@@ -227,20 +229,26 @@
         const txt   = document.getElementById('_ptr_txt');
 
         document.addEventListener('touchstart', e => {
-            if (window.scrollY === 0) { startY = e.touches[0].clientY; pulling = true; }
+            if (getScrollTop() === 0) {
+                startY   = e.touches[0].clientY;
+                pulling  = true;
+                pullDist = 0;
+            }
         }, { passive: true });
 
         document.addEventListener('touchmove', e => {
             if (!pulling) return;
-            pullDist = Math.max(0, e.touches[0].clientY - startY);
-            if (pullDist <= 0) return;
+            const dist = e.touches[0].clientY - startY;
+            if (dist <= 0) { pullDist = 0; return; }
+            pullDist = dist;
+            e.preventDefault(); // bloque le scroll natif pendant le pull
             wrap.style.height   = Math.min(pullDist * 0.42, 56) + 'px';
             inner.style.opacity = Math.min(pullDist / THRESHOLD, 1);
             const ready = pullDist >= THRESHOLD;
             icon.style.transform = ready ? 'rotate(180deg)' : 'rotate(0deg)';
             icon.textContent = ready ? '↑' : '↓';
             txt.textContent  = ready ? 'Relâcher pour rafraîchir' : 'Tirer pour rafraîchir';
-        }, { passive: true });
+        }, { passive: false });
 
         document.addEventListener('touchend', () => {
             if (!pulling) return;
@@ -256,7 +264,7 @@
                 inner.style.opacity = '0';
             }
             pullDist = 0;
-        });
+        }, { passive: true });
     })();
     </script>
     @include('components.feature-reminders')

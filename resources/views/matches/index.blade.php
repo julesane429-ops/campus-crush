@@ -101,6 +101,9 @@ style="animation-delay: {{ $delay }}s">
 <script>
 // ── Pull-to-refresh ───────────────────────────────────────────────
 (function () {
+    // Sur cette page le scroll est dans <main class="overflow-y-auto">, pas window
+    const scrollEl = document.querySelector('main') || document.documentElement;
+
     let startY = 0, pulling = false, pullDist = 0;
     const THRESHOLD = 72;
 
@@ -125,28 +128,35 @@ style="animation-delay: {{ $delay }}s">
     const icon  = document.getElementById('_ptr_icon');
     const txt   = document.getElementById('_ptr_txt');
 
-    document.addEventListener('touchstart', e => {
-        if (window.scrollY === 0) { startY = e.touches[0].clientY; pulling = true; }
+    // Listeners sur scrollEl (le vrai container scrollable)
+    scrollEl.addEventListener('touchstart', e => {
+        if (scrollEl.scrollTop === 0) {
+            startY   = e.touches[0].clientY;
+            pulling  = true;
+            pullDist = 0;
+        }
     }, { passive: true });
 
-    document.addEventListener('touchmove', e => {
+    scrollEl.addEventListener('touchmove', e => {
         if (!pulling) return;
-        pullDist = Math.max(0, e.touches[0].clientY - startY);
-        if (pullDist <= 0) return;
-        wrap.style.height  = Math.min(pullDist * 0.42, 56) + 'px';
+        const dist = e.touches[0].clientY - startY;
+        if (dist <= 0) { pullDist = 0; return; }
+        pullDist = dist;
+        e.preventDefault(); // bloque le scroll natif pendant le pull
+        wrap.style.height   = Math.min(pullDist * 0.42, 56) + 'px';
         inner.style.opacity = Math.min(pullDist / THRESHOLD, 1);
         const ready = pullDist >= THRESHOLD;
         icon.style.transform = ready ? 'rotate(180deg)' : 'rotate(0deg)';
         icon.textContent = ready ? '↑' : '↓';
         txt.textContent  = ready ? 'Relâcher pour rafraîchir' : 'Tirer pour rafraîchir';
-    }, { passive: true });
+    }, { passive: false });
 
-    document.addEventListener('touchend', () => {
+    scrollEl.addEventListener('touchend', () => {
         if (!pulling) return;
         pulling = false;
         if (pullDist >= THRESHOLD) {
-            icon.textContent = '⟳';
-            txt.textContent  = 'Chargement...';
+            icon.textContent    = '⟳';
+            txt.textContent     = 'Chargement...';
             inner.style.opacity = '1';
             wrap.style.height   = '48px';
             setTimeout(() => window.location.reload(), 280);
@@ -155,7 +165,7 @@ style="animation-delay: {{ $delay }}s">
             inner.style.opacity = '0';
         }
         pullDist = 0;
-    });
+    }, { passive: true });
 })();
 </script>
 @endpush
