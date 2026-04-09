@@ -21,6 +21,10 @@ $maxitUrl = $maxitUrl ?? null;
         @keyframes spin { to { transform: rotate(360deg); } }
         .spin { animation: spin 1.2s linear infinite; }
         .cc-mono { font-family: 'Space Mono', monospace; }
+
+        /* QR box */
+        #om-qr-box { display:none; }
+        #om-qr-box.visible { display:block; }
     </style>
 </head>
 <body>
@@ -45,49 +49,64 @@ $maxitUrl = $maxitUrl ?? null;
                 @endif
             </h1>
 
-            <p class="text-sm text-white/40 mb-2 max-w-[300px]">
+            <p class="text-sm text-white/40 mb-4 max-w-[300px]">
                 @if($paymentMethod === 'wave')
                     L'application <strong class="text-white/60">Wave</strong> va s'ouvrir pour confirmer le paiement de <strong class="cc-mono text-white/60">{{ number_format($amount) }} FCFA</strong>
                 @elseif($paymentMethod === 'orange_money')
-                    L'application <strong class="text-white/60">Orange Money</strong> va s'ouvrir pour confirmer le paiement de <strong class="cc-mono text-white/60">{{ number_format($amount) }} FCFA</strong>
+                    Choisis comment payer <strong class="cc-mono text-white/60">{{ number_format($amount) }} FCFA</strong> avec Orange Money
                 @else
                     Tape <strong class="text-white/70 text-lg">#150#</strong> sur ton téléphone pour confirmer le paiement de <strong class="cc-mono text-white/60">{{ number_format($amount) }} FCFA</strong>
                 @endif
             </p>
 
             @if($softpayMessage)
-            <div class="rounded-2xl p-4 mb-4 mt-4" style="background: rgba(255,193,69,0.08); border: 1px solid rgba(255,193,69,0.15);">
+            <div class="rounded-2xl p-4 mb-4" style="background: rgba(255,193,69,0.08); border: 1px solid rgba(255,193,69,0.15);">
                 <p class="text-xs text-white/60">{{ $softpayMessage }}</p>
             </div>
             @endif
 
+            {{-- ═══ ORANGE MONEY ═══ --}}
             @if($paymentMethod === 'orange_money')
-            {{-- Deux boutons directs : Orange Money et Maxit --}}
-            <div class="w-full mt-4 mb-2 space-y-2">
+            <div class="w-full mt-2 mb-2">
 
+                {{-- Bouton Orange Money (visible sur mobile, caché sur desktop) --}}
                 @if(!empty($omUrl))
-                <a href="{{ $omUrl }}" id="btn-om"
-                    class="w-full flex items-center gap-3 px-5 py-3.5 rounded-2xl text-sm font-bold text-white active:scale-95 transition"
-                    style="background: linear-gradient(135deg, #f97316, #ea580c);">
-                    <span class="text-xl">🟠</span>
-                    <div class="text-left">
-                        <div>Orange Money</div>
-                        <div class="text-[10px] font-normal opacity-70">Application officielle Orange</div>
-                    </div>
-                    <span class="ml-auto">→</span>
-                </a>
+                <div id="om-mobile-btn">
+                    <a href="{{ $omUrl }}" id="btn-om"
+                        class="w-full flex items-center gap-3 px-5 py-3.5 rounded-2xl text-sm font-bold text-white active:scale-95 transition mb-2"
+                        style="background: linear-gradient(135deg, #f97316, #ea580c);">
+                        <span class="text-xl">🟠</span>
+                        <div class="text-left flex-1">
+                            <div>Orange Money</div>
+                            <div class="text-[10px] font-normal opacity-70">Appuie pour ouvrir l'app</div>
+                        </div>
+                        <span>→</span>
+                    </a>
+                </div>
                 @endif
 
+                {{-- QR Code (visible sur desktop, ou si le deep link échoue sur mobile) --}}
+                <div id="om-qr-box" class="mb-3">
+                    <div style="background:rgba(255,102,0,0.08); border:1px solid rgba(255,102,0,0.20); border-radius:18px; padding:16px;">
+                        <p class="text-xs text-white/50 mb-3">Scanne ce QR code avec<br>ton téléphone pour payer</p>
+                        <div style="background:#fff; border-radius:12px; padding:10px; display:inline-block;">
+                            <img id="om-qr-img" src="" alt="QR Code Orange Money" width="160" height="160" style="border-radius:6px; display:block;">
+                        </div>
+                        <p class="text-[10px] text-white/30 mt-3">Ouvre l'app Orange Money → Scanner QR</p>
+                    </div>
+                </div>
+
+                {{-- Maxit / Sugu (toujours visible) --}}
                 @if(!empty($maxitUrl))
                 <a href="{{ $maxitUrl }}" id="btn-maxit"
-                    class="w-full flex items-center gap-3 px-5 py-3.5 rounded-2xl text-sm font-bold text-white active:scale-95 transition"
+                    class="w-full flex items-center gap-3 px-5 py-3.5 rounded-2xl text-sm font-bold text-white active:scale-95 transition mb-2"
                     style="background: linear-gradient(135deg, #ea580c, #b45309);">
                     <span class="text-xl">🔶</span>
-                    <div class="text-left">
+                    <div class="text-left flex-1">
                         <div>Maxit / Sugu</div>
                         <div class="text-[10px] font-normal opacity-70">Portefeuille Orange Sonatel</div>
                     </div>
-                    <span class="ml-auto">→</span>
+                    <span>→</span>
                 </a>
                 @endif
 
@@ -96,6 +115,7 @@ $maxitUrl = $maxitUrl ?? null;
                 </p>
             </div>
 
+            {{-- ═══ WAVE ═══ --}}
             @elseif($paymentMethod === 'wave' && !empty($redirectUrl))
             <a href="{{ $redirectUrl }}"
                 class="w-full inline-flex items-center justify-center gap-2 mt-4 mb-2 px-6 py-3.5 rounded-2xl text-sm font-bold text-white active:scale-95 transition"
@@ -116,7 +136,6 @@ $maxitUrl = $maxitUrl ?? null;
 
             <p class="text-[10px] text-white/15 cc-mono">Vérification auto dans <span id="timer">90</span>s</p>
 
-            {{-- Bouton retry --}}
             <div class="mt-6">
                 <a href="{{ $cancelUrl }}" class="text-xs text-white/25 hover:text-white/40 transition underline">
                     Annuler et réessayer
@@ -159,12 +178,85 @@ $maxitUrl = $maxitUrl ?? null;
     </div>
 
     <script>
-    const token = @json($token);
-    const csrf = document.querySelector('meta[name="csrf-token"]').content;
+    const token   = @json($token);
+    const csrf    = document.querySelector('meta[name="csrf-token"]').content;
+    const omUrl   = @json($omUrl ?? null);
+    const maxitUrl= @json($maxitUrl ?? null);
+
     let attempts = 0;
-    const maxAttempts = 18; // 18 × 5s = 90 secondes
+    const maxAttempts = 18;
     let timerInterval, pollInterval;
 
+    // ── Détection device ──────────────────────────────────────────
+    const isAndroid = /android/i.test(navigator.userAgent);
+    const isIOS     = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    const isMobile  = isAndroid || isIOS;
+
+    // ── Orange Money : logique d'affichage ────────────────────────
+    @if($paymentMethod === 'orange_money')
+    (function () {
+        const mobileBtn = document.getElementById('om-mobile-btn');
+        const qrBox     = document.getElementById('om-qr-box');
+        const qrImg     = document.getElementById('om-qr-img');
+
+        // URL à encoder dans le QR — on préfère maxit (HTTPS stable)
+        const qrTarget = maxitUrl || omUrl;
+
+        function showQr() {
+            if (qrBox && qrImg && qrTarget) {
+                qrImg.src = 'https://api.qrserver.com/v1/create-qr-code/?size=160x160&color=000000&bgcolor=ffffff&data='
+                    + encodeURIComponent(qrTarget);
+                qrBox.classList.add('visible');
+            }
+        }
+
+        if (!isMobile) {
+            // ── DESKTOP : cacher le bouton app, afficher QR directement ──
+            if (mobileBtn) mobileBtn.style.display = 'none';
+            showQr();
+        } else {
+            // ── MOBILE : afficher le bouton, détecter échec du deep link ──
+            // Safari iOS ne supporte pas orangemoney://, on intercepte le clic
+            const btn = document.getElementById('btn-om');
+            if (btn) {
+                btn.addEventListener('click', function (e) {
+                    // Laisser le navigateur tenter l'ouverture
+                    // Si après 2s on est toujours sur la page → l'app ne s'est pas ouverte
+                    const t = Date.now();
+                    setTimeout(function () {
+                        // Si la page est encore visible (l'app ne s'est pas ouverte)
+                        if (!document.hidden && Date.now() - t < 3500) {
+                            // Basculer vers QR + cacher le bouton OM
+                            if (mobileBtn) mobileBtn.style.display = 'none';
+                            showQr();
+                        }
+                    }, 2500);
+                });
+            }
+
+            // Auto-redirect vers Orange Money sur mobile après 1.5s
+            if (omUrl) {
+                setTimeout(function () {
+                    window.location.href = omUrl;
+                    // Détection d'échec après 2.5s supplémentaires
+                    setTimeout(function () {
+                        if (!document.hidden) {
+                            if (mobileBtn) mobileBtn.style.display = 'none';
+                            showQr();
+                        }
+                    }, 2500);
+                }, 1500);
+            }
+        }
+    })();
+    @endif
+
+    // ── Wave : auto-redirect ──────────────────────────────────────
+    @if($paymentMethod === 'wave' && !empty($redirectUrl))
+    setTimeout(() => { window.location.href = @json($redirectUrl); }, 1500);
+    @endif
+
+    // ── Polling statut paiement ───────────────────────────────────
     function startPolling() {
         document.getElementById('state-waiting').classList.remove('hidden');
         document.getElementById('state-timeout').classList.add('hidden');
@@ -183,7 +275,6 @@ $maxitUrl = $maxitUrl ?? null;
 
         clearInterval(pollInterval);
         pollInterval = setInterval(checkStatus, 5000);
-        // Premier check après 8s (laisser le temps de confirmer)
         setTimeout(checkStatus, 8000);
     }
 
@@ -193,7 +284,7 @@ $maxitUrl = $maxitUrl ?? null;
         if (statusEl) statusEl.textContent = 'Vérification... (' + attempts + '/' + maxAttempts + ')';
 
         try {
-            const res = await fetch('/payment/check/' + token, {
+            const res  = await fetch('/payment/check/' + token, {
                 headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrf }
             });
             const data = await res.json();
@@ -216,29 +307,6 @@ $maxitUrl = $maxitUrl ?? null;
     }
 
     startPolling();
-
-    const isAndroid = /android/i.test(navigator.userAgent);
-    const isIOS     = /iphone|ipad|ipod/i.test(navigator.userAgent);
-    const isMobile  = isAndroid || isIOS;
-
-    @if($paymentMethod === 'wave' && !empty($redirectUrl))
-        // Wave : URL HTTPS universelle, auto-redirect
-        setTimeout(() => { window.location.href = @json($redirectUrl); }, 1500);
-    @endif
-
-    @if($paymentMethod === 'orange_money')
-    (function() {
-        const omUrl    = @json($omUrl);    // Firebase Dynamic Link Orange Money
-        const maxitUrl = @json($maxitUrl); // Lien direct Maxit/Sugu
-
-        // Sur mobile : auto-ouvrir Orange Money en priorité après 1.5s
-        // (Firebase Dynamic Link gère iOS et Android automatiquement)
-        if (isMobile && omUrl) {
-            setTimeout(() => { window.location.href = omUrl; }, 1500);
-        }
-        // Sur desktop : l'utilisateur clique le bouton de son choix
-    })();
-    @endif
     </script>
 </body>
 </html>
