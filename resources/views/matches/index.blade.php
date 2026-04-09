@@ -104,65 +104,92 @@ style="animation-delay: {{ $delay }}s">
     // Sur cette page le scroll est dans <main class="overflow-y-auto">, pas window
     const scrollEl = document.querySelector('main') || document.documentElement;
 
-    let startY = 0, pulling = false, pullDist = 0;
-    const THRESHOLD = 72;
+    let startY = 0, pulling = false, pullDist = 0, releasing = false;
+    const THRESHOLD = 52; // px — seuil réduit pour mobile
+
+    // ── Indicateur ────────────────────────────────────────────────
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes _ptr_spin { to { transform: rotate(360deg); } }
+        ._ptr_spinning { animation: _ptr_spin 0.7s linear infinite !important; }
+    `;
+    document.head.appendChild(style);
 
     const wrap = document.createElement('div');
+    // Pas de transition pendant le drag — on l'ajoute seulement au relâchement
     wrap.style.cssText = [
-        'position:fixed', 'top:0', 'left:0', 'right:0', 'z-index:200',
+        'position:fixed', 'top:0', 'left:0', 'right:0', 'z-index:9999',
         'display:flex', 'align-items:center', 'justify-content:center',
         'height:0', 'overflow:hidden', 'pointer-events:none',
-        'background:rgba(255,94,108,0.07)',
-        'backdrop-filter:blur(12px)',
-        'border-bottom:1px solid rgba(255,94,108,0.10)',
-        'transition:height 0.12s ease',
+        'background:rgba(255,94,108,0.09)',
+        'backdrop-filter:blur(14px)',
+        'border-bottom:1px solid rgba(255,94,108,0.15)',
     ].join(';');
     wrap.innerHTML = `
-        <div id="_ptr_inner" style="display:flex;align-items:center;gap:8px;opacity:0;transition:opacity 0.18s;">
-            <span id="_ptr_icon" style="font-size:16px;display:inline-block;transition:transform 0.2s;">↓</span>
-            <span id="_ptr_txt" style="font-size:11px;color:rgba(255,255,255,0.45);font-family:'Sora',sans-serif;font-weight:500;">Tirer pour rafraîchir</span>
+        <div id="_ptr_inner" style="display:flex;align-items:center;gap:10px;opacity:0;">
+            <span id="_ptr_icon" style="font-size:18px;display:inline-block;transition:transform 0.15s ease;">↓</span>
+            <span id="_ptr_txt" style="font-size:12px;color:rgba(255,255,255,0.55);font-family:'Sora',sans-serif;font-weight:600;letter-spacing:0.01em;">Tirer pour rafraîchir</span>
         </div>`;
     document.body.appendChild(wrap);
 
-    const inner = document.getElementById('_ptr_inner');
-    const icon  = document.getElementById('_ptr_icon');
-    const txt   = document.getElementById('_ptr_txt');
+    const inner = wrap.querySelector('#_ptr_inner');
+    const icon  = wrap.querySelector('#_ptr_icon');
+    const txt   = wrap.querySelector('#_ptr_txt');
 
-    // Listeners sur scrollEl (le vrai container scrollable)
+    function setHeight(h, animated) {
+        wrap.style.transition = animated ? 'height 0.22s cubic-bezier(0.22,1,0.36,1)' : 'none';
+        wrap.style.height = h + 'px';
+    }
+
+    // ── Touch listeners sur le vrai container ─────────────────────
     scrollEl.addEventListener('touchstart', e => {
-        if (scrollEl.scrollTop === 0) {
-            startY   = e.touches[0].clientY;
-            pulling  = true;
-            pullDist = 0;
-        }
+        if (releasing || scrollEl.scrollTop > 0) return;
+        startY   = e.touches[0].clientY;
+        pulling  = true;
+        pullDist = 0;
     }, { passive: true });
 
     scrollEl.addEventListener('touchmove', e => {
-        if (!pulling) return;
+        if (!pulling || releasing) return;
         const dist = e.touches[0].clientY - startY;
-        if (dist <= 0) { pullDist = 0; return; }
+        if (dist <= 0) { pullDist = 0; setHeight(0, false); inner.style.opacity = '0'; return; }
         pullDist = dist;
-        e.preventDefault(); // bloque le scroll natif pendant le pull
-        wrap.style.height   = Math.min(pullDist * 0.42, 56) + 'px';
-        inner.style.opacity = Math.min(pullDist / THRESHOLD, 1);
+        e.preventDefault();
+
+        // Hauteur suit le doigt sans lag (résistance légère via sqrt)
+        const h = Math.min(Math.sqrt(pullDist) * 6.5, 70);
+        setHeight(h, false); // pas d'animation pendant le drag
+
+        // Opacité proportionnelle — visible dès 10px
+        inner.style.opacity = Math.min(pullDist / (THRESHOLD * 0.6), 1);
+
         const ready = pullDist >= THRESHOLD;
         icon.style.transform = ready ? 'rotate(180deg)' : 'rotate(0deg)';
         icon.textContent = ready ? '↑' : '↓';
         txt.textContent  = ready ? 'Relâcher pour rafraîchir' : 'Tirer pour rafraîchir';
+        txt.style.color  = ready ? 'rgba(255,94,108,0.9)' : 'rgba(255,255,255,0.55)';
     }, { passive: false });
 
     scrollEl.addEventListener('touchend', () => {
         if (!pulling) return;
-        pulling = false;
+        pulling   = false;
+        releasing = true;
+
         if (pullDist >= THRESHOLD) {
-            icon.textContent    = '⟳';
-            txt.textContent     = 'Chargement...';
+            // État chargement : indicateur fixe + spinner
+            icon.textContent = '↻';
+            icon.classList.add('_ptr_spinning');
+            txt.textContent  = 'Chargement...';
+            txt.style.color  = 'rgba(255,255,255,0.6)';
             inner.style.opacity = '1';
-            wrap.style.height   = '48px';
-            setTimeout(() => window.location.reload(), 280);
+            setHeight(52, true); // fixe à 52px avec animation
+            // Reload après 600ms pour que l'utilisateur voit l'état de chargement
+            setTimeout(() => window.location.reload(), 600);
         } else {
-            wrap.style.height   = '0';
+            // Rétraction animée
             inner.style.opacity = '0';
+            setHeight(0, true);
+            setTimeout(() => { releasing = false; }, 250);
         }
         pullDist = 0;
     }, { passive: true });
