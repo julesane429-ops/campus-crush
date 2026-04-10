@@ -640,54 +640,53 @@
 
     {{-- ── TUTORIAL OVERLAY ── --}}
     <div id="swipe-tutorial"
-        class="hidden fixed inset-0 z-[60] flex flex-col items-center justify-center"
+        class="hidden fixed inset-0 z-[60] flex flex-col items-center justify-center px-4"
         style="background: rgba(10,8,22,0.88); backdrop-filter: blur(8px);"
         onclick="dismissTutorial()">
 
-        {{-- Carte fantôme au centre pour le contexte --}}
-        <div class="relative mb-10" style="pointer-events: none;">
+        {{-- Rangée : [PASSE] [carte] [LIKE] en flex siblings --}}
+        <div class="flex items-center justify-center gap-0 mb-10 w-full max-w-sm">
 
             {{-- Flèche gauche — PASSE --}}
-            <div class="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-full pr-6 flex flex-col items-center gap-2"
-                style="animation: tutArrowLeft 1.4s ease-in-out infinite;">
-                <div class="flex items-center gap-2">
-                    <svg class="w-8 h-8 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+            <div class="flex flex-col items-center gap-2 flex-shrink-0 z-10"
+                style="animation: tutArrowLeft 1.4s ease-in-out infinite; min-width: 80px;">
+                <div class="flex items-center gap-1.5">
+                    <svg class="w-7 h-7 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
                     </svg>
-                    <span class="text-sm font-bold text-red-400/80 tracking-widest uppercase">Passe</span>
+                    <span class="text-sm font-bold text-red-400/80 tracking-wider uppercase">Passe</span>
                 </div>
-                <span class="text-[10px] text-white/25 font-medium">Swipe à gauche</span>
+                <span class="text-[10px] text-white/25 font-medium text-center">Swipe<br>à gauche</span>
             </div>
 
-            {{-- Phone card simulée --}}
-            <div class="w-52 h-72 rounded-3xl overflow-hidden relative flex-shrink-0"
+            {{-- Carte fantôme --}}
+            <div class="w-44 h-64 rounded-3xl overflow-hidden relative flex-shrink-0 z-0 mx-4"
                 style="background: linear-gradient(160deg, #2d1b69, #1a0e4a, #3b1a3a);
                     border: 1px solid rgba(255,255,255,0.08);
-                    box-shadow: 0 30px 80px rgba(0,0,0,0.6);">
-                {{-- Gradient bas --}}
-                <div class="absolute bottom-0 left-0 right-0 h-28"
+                    box-shadow: 0 30px 80px rgba(0,0,0,0.6);
+                    pointer-events: none;">
+                <div class="absolute inset-0 flex items-center justify-center">
+                    <span class="text-5xl opacity-20">👤</span>
+                </div>
+                <div class="absolute bottom-0 left-0 right-0 h-24"
                     style="background: linear-gradient(to top, rgba(10,8,22,0.95), transparent);">
                 </div>
                 <div class="absolute bottom-4 left-4 right-4">
-                    <p class="text-base font-bold text-white leading-tight">Aïssatou, 21</p>
-                    <p class="text-[11px] text-white/40 mt-0.5">📍 UCAD · Lettres</p>
-                </div>
-                {{-- Icône cœur au centre --}}
-                <div class="absolute inset-0 flex items-center justify-center">
-                    <span class="text-5xl opacity-20">👤</span>
+                    <p class="text-sm font-bold text-white leading-tight">Aïssatou, 21</p>
+                    <p class="text-[10px] text-white/40 mt-0.5">📍 UCAD · Lettres</p>
                 </div>
             </div>
 
             {{-- Flèche droite — LIKE --}}
-            <div class="absolute right-0 top-1/2 -translate-y-1/2 translate-x-full pl-6 flex flex-col items-center gap-2"
-                style="animation: tutArrowRight 1.4s ease-in-out infinite;">
-                <div class="flex items-center gap-2">
-                    <span class="text-sm font-bold text-green-400/80 tracking-widest uppercase">Like</span>
-                    <svg class="w-8 h-8 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+            <div class="flex flex-col items-center gap-2 flex-shrink-0 z-10"
+                style="animation: tutArrowRight 1.4s ease-in-out infinite; min-width: 80px;">
+                <div class="flex items-center gap-1.5">
+                    <span class="text-sm font-bold text-green-400/80 tracking-wider uppercase">Like</span>
+                    <svg class="w-7 h-7 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
                     </svg>
                 </div>
-                <span class="text-[10px] text-white/25 font-medium">Swipe à droite</span>
+                <span class="text-[10px] text-white/25 font-medium text-center">Swipe<br>à droite</span>
             </div>
         </div>
 
@@ -695,11 +694,11 @@
         <div class="flex items-center gap-2 mb-6 px-5 py-2.5 rounded-2xl"
             style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);">
             <span class="text-base">👆</span>
-            <span class="text-xs text-white/40 font-medium">Double-tap sur la photo pour liker instantanément</span>
+            <span class="text-xs text-white/40 font-medium">Double-tap sur la photo pour liker</span>
         </div>
 
         {{-- CTA dismiss --}}
-        <button onclick="dismissTutorial()"
+        <button onclick="event.stopPropagation(); dismissTutorial()"
             class="px-8 py-3.5 rounded-2xl font-semibold text-white text-sm active:scale-95 transition"
             style="background: linear-gradient(135deg, #ff5e6c, #ff8a5c); box-shadow: 0 8px 30px rgba(255,94,108,0.35);">
             C'est parti ! 🔥
@@ -713,12 +712,12 @@
 
             0%,
             100% {
-                transform: translateY(-50%) translateX(0);
+                transform: translateX(0);
                 opacity: 0.6;
             }
 
             50% {
-                transform: translateY(-50%) translateX(-12px);
+                transform: translateX(-8px);
                 opacity: 1;
             }
         }
@@ -727,12 +726,12 @@
 
             0%,
             100% {
-                transform: translateY(-50%) translateX(0);
+                transform: translateX(0);
                 opacity: 0.6;
             }
 
             50% {
-                transform: translateY(-50%) translateX(12px);
+                transform: translateX(8px);
                 opacity: 1;
             }
         }
