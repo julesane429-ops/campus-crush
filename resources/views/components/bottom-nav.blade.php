@@ -27,7 +27,7 @@
 @endphp
 
 <div class="fixed bottom-5 left-0 right-0 flex justify-center z-50 px-4">
-    <nav class="flex items-center justify-between px-2 py-2 rounded-[20px] cc-surface-raised w-full max-w-sm">
+    <nav id="cc-bottom-nav" class="flex items-center justify-between px-2 py-2 rounded-[20px] cc-surface-raised w-full max-w-sm">
         @php
             $navItems = [
                 ['route' => 'swipe',       'label' => 'Découvrir', 'icon' => 'fire',   'badge' => 0],
