@@ -203,7 +203,7 @@ html.light ::-webkit-scrollbar-thumb {
 ══════════════════════════════════════════════════ */
 #cc-theme-toggle {
     position: fixed;
-    top: max(14px, env(safe-area-inset-top, 14px));
+    bottom: 148px;
     right: 16px;
     z-index: 9999;
     width: 40px;

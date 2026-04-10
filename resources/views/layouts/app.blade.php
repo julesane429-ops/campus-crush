@@ -16,6 +16,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 
     <style>
+        /* ── Mode sombre (défaut) ── */
         :root {
             --cc-bg: #0c0a1a;
             --cc-surface: rgba(255,255,255,0.04);
@@ -30,6 +31,7 @@
             --cc-gradient-2: linear-gradient(135deg, #6c5ce7 0%, #a855f7 50%, #ff5e6c 100%);
             --cc-gradient-3: linear-gradient(160deg, #0c0a1a 0%, #1a1145 40%, #0f1a3a 100%);
         }
+        /* ── Mode clair — variables surchargées via pwa-meta (html.light) ── */
 
         * { font-family: 'Sora', sans-serif; box-sizing: border-box; margin: 0; padding: 0; }
 
