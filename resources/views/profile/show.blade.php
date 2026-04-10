@@ -177,11 +177,23 @@
             {{-- PHOTO + NAME --}}
             {{-- ═══════════════════════════════ --}}
             <div class="flex flex-col items-center mb-7 fade-up d1">
-                <div class="photo-ring mb-4">
+                <div class="photo-ring mb-3 cursor-pointer active:scale-95 transition-transform duration-200"
+                    onclick="document.getElementById('card-preview-modal').classList.remove('hidden')"
+                    title="Voir ma carte">
                     <div class="w-full h-full rounded-full overflow-hidden">
                         <img src="{{ $profile->photo_url }}" class="w-full h-full object-cover" alt="{{ e($user->name) }}">
                     </div>
                 </div>
+
+                {{-- Label hint sous la photo --}}
+                <p class="text-[10px] text-white/20 mb-3 flex items-center gap-1 cursor-pointer hover:text-white/40 transition"
+                    onclick="document.getElementById('card-preview-modal').classList.remove('hidden')">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                    </svg>
+                    Voir ma carte
+                </p>
                 <h1 class="text-2xl font-bold leading-tight">
                     {{ e($user->name) }}<span class="text-white/40 font-normal ml-1.5 text-lg">{{ $profile->age }}</span>
                 </h1>
@@ -326,7 +338,7 @@
                 <h2 class="text-[10px] text-white/25 uppercase tracking-widest font-medium">À propos</h2>
                 <a href="{{ route('profile.edit') }}" class="text-[10px] text-[#ff5e6c]/60 hover:text-[#ff5e6c] transition">Modifier</a>
             </div>
-            <p class="text-[13px] text-white/50 leading-relaxed">{{ e($profile->bio ?? 'Aucune bio pour le moment. Ajoute une bio pour te démarquer !') }}</p>
+            <p class="text-[13px] text-white/50 leading-relaxed">{{ html_entity_decode($profile->bio ?? 'Aucune bio pour le moment. Ajoute une bio pour te démarquer !', ENT_QUOTES, 'UTF-8') }}</p>
         </div>
 
         {{-- ═══════════════════════════════ --}}
@@ -498,6 +510,104 @@
 
     </div>
     </div>
+
+    {{-- ── MODAL : Aperçu de ma carte ── --}}
+    <div id="card-preview-modal"
+        class="hidden fixed inset-0 z-50 flex flex-col items-center justify-center px-6"
+        style="background: rgba(10,8,22,0.92); backdrop-filter: blur(16px);"
+        onclick="document.getElementById('card-preview-modal').classList.add('hidden')">
+
+        {{-- Label --}}
+        <p class="text-[11px] font-semibold tracking-widest uppercase text-white/25 mb-5">
+            Comme les autres te voient 👀
+        </p>
+
+        {{-- Carte swipe fidèle --}}
+        <div class="relative w-72 rounded-[28px] overflow-hidden"
+            style="height: 420px;
+                box-shadow: 0 40px 100px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.06);
+                pointer-events: none;"
+            onclick="event.stopPropagation()">
+
+            {{-- Photo --}}
+            <img src="{{ $profile->photo_url }}"
+                class="absolute inset-0 w-full h-full object-cover"
+                alt="{{ e($user->name) }}">
+
+            {{-- Gradient bas --}}
+            <div class="absolute inset-0"
+                style="background: linear-gradient(to top, rgba(10,8,22,0.97) 0%, rgba(10,8,22,0.5) 45%, transparent 70%);">
+            </div>
+
+            {{-- Contenu bas de carte --}}
+            <div class="absolute bottom-0 left-0 right-0 p-5">
+
+                {{-- Nom + âge --}}
+                <div class="flex items-baseline gap-2 mb-1">
+                    <h2 class="text-2xl font-bold text-white leading-none">{{ e($user->name) }}</h2>
+                    <span class="text-lg text-white/55 font-light">{{ $profile->age }}</span>
+                </div>
+
+                {{-- Université --}}
+                @if($profile->university_name ?? $profile->university ?? null)
+                <p class="text-[11px] text-white/35 mb-2">
+                    🎓 {{ $profile->university_name ?? $profile->university }}
+                    @if($profile->ufr) · {{ $profile->ufr }}@endif
+                </p>
+                @endif
+
+                {{-- Bio (tronquée comme sur la vraie carte) --}}
+                @if($profile->bio)
+                <p class="text-xs text-white/50 leading-relaxed mb-3 line-clamp-2">
+                    {{ html_entity_decode($profile->bio, ENT_QUOTES, 'UTF-8') }}
+                </p>
+                @endif
+
+                {{-- Tags intérêts --}}
+                @if($profile->interests)
+                <div class="flex flex-wrap gap-1.5">
+                    @foreach(array_slice($profile->interests_array, 0, 4) as $interest)
+                    <span class="px-2.5 py-1 rounded-full text-[10px] text-white/75 font-medium"
+                        style="background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.08); backdrop-filter: blur(8px);">
+                        {{ e($interest) }}
+                    </span>
+                    @endforeach
+                </div>
+                @endif
+            </div>
+        </div>
+
+        {{-- Actions de la vraie carte (décoratif) --}}
+        <div class="flex items-center gap-5 mt-6">
+            <div class="w-12 h-12 rounded-2xl flex items-center justify-center"
+                style="background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.2);">
+                <span class="text-lg">✕</span>
+            </div>
+            <div class="w-14 h-14 rounded-2xl flex items-center justify-center"
+                style="background: linear-gradient(135deg,#ff5e6c,#ff8a5c); box-shadow: 0 4px 20px rgba(255,94,108,0.4);">
+                <svg class="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                </svg>
+            </div>
+            <div class="w-12 h-12 rounded-2xl flex items-center justify-center"
+                style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);">
+                <span class="text-lg opacity-40">⚙️</span>
+            </div>
+        </div>
+
+        {{-- Fermer --}}
+        <button onclick="document.getElementById('card-preview-modal').classList.add('hidden')"
+            class="mt-6 px-6 py-2.5 rounded-xl text-xs font-medium text-white/30 border border-white/10 hover:bg-white/5 transition active:scale-95">
+            Fermer
+        </button>
+
+        <p class="text-[10px] text-white/15 mt-3">
+            Pour modifier, va dans
+            <a href="{{ route('profile.edit') }}" class="text-[#ff5e6c]/50 hover:text-[#ff5e6c] transition"
+                onclick="event.stopPropagation()">Modifier le profil</a>
+        </p>
+    </div>
+
     <script>
         const publicUrl = '{{ route("public.profile", auth()->user()->slug ?? "profil") }}';
         const profileName = '{{ e($user->name) }}';
