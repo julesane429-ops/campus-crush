@@ -22,12 +22,12 @@
     <a href="{{ route('ai.index') }}"
        id="ai-fab-btn"
        aria-label="Ouvrir le chat IA"
-       class="relative flex items-center justify-center w-12 h-12 rounded-2xl shadow-lg transition-all duration-300 active:scale-90"
-       style="background: linear-gradient(135deg, #ff5e6c 0%, #a855f7 100%);
+       class="relative flex items-center justify-center w-10 h-10 shadow-lg transition-all duration-300 active:scale-90"
+       style="border-radius:14px; background: linear-gradient(135deg, #ff5e6c 0%, #a855f7 100%);
               box-shadow: 0 4px 20px rgba(255,94,108,0.35), 0 2px 8px rgba(0,0,0,0.4);">
 
         {{-- Icône étincelle IA --}}
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M12 2L13.5 8.5L20 10L13.5 11.5L12 18L10.5 11.5L4 10L10.5 8.5L12 2Z"
                   fill="white" fill-opacity="0.95"/>
             <path d="M19 15L19.75 17.25L22 18L19.75 18.75L19 21L18.25 18.75L16 18L18.25 17.25L19 15Z"
