@@ -320,87 +320,94 @@
     </style>
 
     <script>
-    // ── Pull-to-refresh ───────────────────────────────────────────────
-    // Sur cette page, window est le scroll container (body min-h-screen)
+    // ── Pull-to-refresh amélioré ──────────────────────────────────────
     (function () {
         let startY = 0, pulling = false, pullDist = 0, releasing = false;
-        const THRESHOLD = 52;
+        const THRESHOLD = 60;
         const getScrollTop = () => window.pageYOffset || document.documentElement.scrollTop || 0;
 
         const style = document.createElement('style');
         style.textContent = `
             @keyframes _ptr_spin { to { transform: rotate(360deg); } }
             ._ptr_spinning { animation: _ptr_spin 0.7s linear infinite !important; }
+            @keyframes _ptr_pulse { 0%,100% { opacity:0.6; } 50% { opacity:1; } }
+            ._ptr_pulse { animation: _ptr_pulse 1s ease-in-out infinite; }
         `;
         document.head.appendChild(style);
 
         const wrap = document.createElement('div');
         wrap.style.cssText = [
-            'position:fixed', 'top:0', 'left:0', 'right:0', 'z-index:9999',
+            'position:fixed', 'top:0', 'left:50%', 'transform:translateX(-50%)',
+            'z-index:9999', 'pointer-events:none',
+            'width:44px', 'height:0', 'overflow:visible',
             'display:flex', 'align-items:center', 'justify-content:center',
-            'height:0', 'overflow:hidden', 'pointer-events:none',
-            'background:rgba(255,94,108,0.09)',
-            'backdrop-filter:blur(14px)',
-            'border-bottom:1px solid rgba(255,94,108,0.15)',
         ].join(';');
         wrap.innerHTML = `
-            <div id="_ptr_inner" style="display:flex;align-items:center;gap:10px;opacity:0;">
-                <span id="_ptr_icon" style="font-size:18px;display:inline-block;transition:transform 0.15s ease;">↓</span>
-                <span id="_ptr_txt" style="font-size:12px;color:rgba(255,255,255,0.55);font-family:'Sora',sans-serif;font-weight:600;letter-spacing:0.01em;">Tirer pour rafraîchir</span>
+            <div id="_ptr_circle" style="
+                width:40px; height:40px; border-radius:50%;
+                background: rgba(12,10,26,0.85);
+                border: 2px solid rgba(255,94,108,0.25);
+                backdrop-filter: blur(12px);
+                display:flex; align-items:center; justify-content:center;
+                opacity:0; transform:scale(0.5) translateY(-20px);
+                transition: opacity 0.2s, transform 0.25s cubic-bezier(0.22,1,0.36,1);
+                box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+            ">
+                <svg id="_ptr_svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff5e6c" stroke-width="2.5" stroke-linecap="round">
+                    <path d="M12 5v14M5 12l7-7 7 7"/>
+                </svg>
             </div>`;
         document.body.appendChild(wrap);
 
-        const inner = wrap.querySelector('#_ptr_inner');
-        const icon  = wrap.querySelector('#_ptr_icon');
-        const txt   = wrap.querySelector('#_ptr_txt');
+        const circle = wrap.querySelector('#_ptr_circle');
+        const svg = wrap.querySelector('#_ptr_svg');
 
-        function setHeight(h, animated) {
-            wrap.style.transition = animated ? 'height 0.22s cubic-bezier(0.22,1,0.36,1)' : 'none';
-            wrap.style.height = h + 'px';
+        function setPos(y, animated) {
+            wrap.style.transition = animated ? 'height 0.3s cubic-bezier(0.22,1,0.36,1)' : 'none';
+            wrap.style.height = y + 'px';
         }
 
         document.addEventListener('touchstart', e => {
             if (releasing || getScrollTop() > 0) return;
-            startY   = e.touches[0].clientY;
-            pulling  = true;
+            startY = e.touches[0].clientY;
+            pulling = true;
             pullDist = 0;
         }, { passive: true });
 
         document.addEventListener('touchmove', e => {
             if (!pulling || releasing) return;
             const dist = e.touches[0].clientY - startY;
-            if (dist <= 0) { pullDist = 0; setHeight(0, false); inner.style.opacity = '0'; return; }
+            if (dist <= 0) { pullDist = 0; circle.style.opacity = '0'; circle.style.transform = 'scale(0.5) translateY(-20px)'; return; }
             pullDist = dist;
-            e.preventDefault();
 
-            const h = Math.min(Math.sqrt(pullDist) * 6.5, 70);
-            setHeight(h, false);
-            inner.style.opacity = Math.min(pullDist / (THRESHOLD * 0.6), 1);
+            const progress = Math.min(pullDist / THRESHOLD, 1);
+            const y = Math.min(Math.sqrt(pullDist) * 5, 80);
+            setPos(y, false);
 
-            const ready = pullDist >= THRESHOLD;
-            icon.style.transform = ready ? 'rotate(180deg)' : 'rotate(0deg)';
-            icon.textContent = ready ? '↑' : '↓';
-            txt.textContent  = ready ? 'Relâcher pour rafraîchir' : 'Tirer pour rafraîchir';
-            txt.style.color  = ready ? 'rgba(255,94,108,0.9)' : 'rgba(255,255,255,0.55)';
+            circle.style.opacity = Math.min(progress * 1.5, 1);
+            circle.style.transform = `scale(${0.5 + progress * 0.5}) translateY(0px)`;
+            svg.style.transform = `rotate(${progress * 180}deg)`;
+            svg.style.transition = 'transform 0.1s';
+            circle.style.borderColor = progress >= 1 ? 'rgba(255,94,108,0.7)' : 'rgba(255,94,108,0.25)';
         }, { passive: false });
 
         document.addEventListener('touchend', () => {
             if (!pulling) return;
-            pulling   = false;
+            pulling = false;
             releasing = true;
 
             if (pullDist >= THRESHOLD) {
-                icon.textContent = '↻';
-                icon.classList.add('_ptr_spinning');
-                txt.textContent  = 'Chargement...';
-                txt.style.color  = 'rgba(255,255,255,0.6)';
-                inner.style.opacity = '1';
-                setHeight(52, true);
-                setTimeout(() => window.location.reload(), 600);
+                circle.style.borderColor = 'rgba(255,94,108,0.6)';
+                svg.innerHTML = '<path d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182"/>';
+                svg.classList.add('_ptr_spinning');
+                circle.classList.add('_ptr_pulse');
+                setPos(56, true);
+                setTimeout(() => window.location.reload(), 500);
             } else {
-                inner.style.opacity = '0';
-                setHeight(0, true);
-                setTimeout(() => { releasing = false; }, 250);
+                circle.style.opacity = '0';
+                circle.style.transform = 'scale(0.5) translateY(-20px)';
+                setPos(0, true);
+                setTimeout(() => { releasing = false; }, 300);
             }
             pullDist = 0;
         }, { passive: true });

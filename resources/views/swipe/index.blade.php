@@ -90,6 +90,28 @@
             transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
 
+        /* Skeleton shimmer */
+        @keyframes shimmer {
+            0% { background-position: -400px 0; }
+            100% { background-position: 400px 0; }
+        }
+        .skeleton-card {
+            position: absolute; inset: 0; border-radius: 24px; overflow: hidden;
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        .skeleton-card.sk-behind { transform: scale(0.95) translateY(12px); opacity: 0.5; }
+        .skeleton-shine {
+            background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.04) 40%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.04) 60%, rgba(255,255,255,0) 100%);
+            background-size: 800px 100%;
+            animation: shimmer 1.8s ease-in-out infinite;
+            position: absolute; inset: 0;
+        }
+        .sk-bar {
+            border-radius: 8px;
+            background: rgba(255,255,255,0.06);
+        }
+
         /* Card gradient overlay */
         .card-gradient {
             background: linear-gradient(0deg, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.4) 35%, rgba(0, 0, 0, 0.05) 60%, transparent 100%);
@@ -482,7 +504,26 @@
             </style>
 
             {{-- Card stack container --}}
-            <div class="card-stack" id="card-stack"></div>
+            <div class="card-stack" id="card-stack">
+                {{-- Skeleton loading --}}
+                <div id="skeleton-loader">
+                    <div class="skeleton-card sk-behind">
+                        <div class="skeleton-shine"></div>
+                    </div>
+                    <div class="skeleton-card">
+                        <div class="skeleton-shine"></div>
+                        <div class="absolute bottom-0 left-0 right-0 p-5">
+                            <div class="sk-bar" style="width:55%; height:22px; margin-bottom:10px;"></div>
+                            <div class="sk-bar" style="width:35%; height:14px; margin-bottom:14px;"></div>
+                            <div class="flex gap-2">
+                                <div class="sk-bar" style="width:60px; height:26px; border-radius:999px;"></div>
+                                <div class="sk-bar" style="width:50px; height:26px; border-radius:999px;"></div>
+                                <div class="sk-bar" style="width:70px; height:26px; border-radius:999px;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </main>
 
         {{-- ═══════════════════════════════ --}}
@@ -764,6 +805,10 @@
         // RENDER CARDS (show up to 3 stacked)
         // ═══════════════════════════════════════════
         function renderCards() {
+            // Remove skeleton loader
+            const skeleton = document.getElementById('skeleton-loader');
+            if (skeleton) skeleton.remove();
+
             cardStack.innerHTML = '';
 
             if (currentIndex >= profiles.length) {
