@@ -282,7 +282,7 @@ $otherPhoto = $otherProfile?->photo_url ?? 'https://ui-avatars.com/api/?backgrou
                     @foreach($suggestions as $suggestion)
                     <button type="button"
                         onclick="fillIcebreaker(this)"
-                        data-msg="{{ e($suggestion) }}"
+                        data-msg="{{ $suggestion }}"
                         class="icebreaker-chip text-left px-4 py-2.5 rounded-2xl text-[12px] text-white/60 transition-all duration-200 active:scale-95"
                         style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07);">
                         {{ $suggestion }}
