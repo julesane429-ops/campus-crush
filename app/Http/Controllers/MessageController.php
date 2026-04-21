@@ -11,34 +11,55 @@ use App\Events\UserTyping;
 use App\Notifications\NewMessageNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use App\Services\WebPushService;
 use Illuminate\Support\Str;
 
 class MessageController extends Controller
 {
+    // Nombre de messages chargés initialement (les plus récents)
+    private const MESSAGES_PER_PAGE = 50;
+
     public function show(int $matchId)
     {
-        $user = Auth::user();
+        $user  = Auth::user();
         $match = $this->getAuthorizedMatch($matchId, $user->id);
 
         if ($match->isBlocked()) {
-            return redirect()->route('matches')
-                ->with('error', 'Cette conversation a été bloquée.');
+            return redirect()->route('matches')->with('error', 'Cette conversation a été bloquée.');
         }
 
-        $match->load([
-            'messages' => fn($q) => $q->orderBy('created_at', 'asc'),
-            'messages.sender.profile',
-            'messages.attachments',
-            'user1.profile',
-            'user2.profile',
-        ]);
+        // ── PAGINATION : on charge seulement les N derniers messages ────
+        // Au lieu de charger tout l'historique, on prend les 50 derniers.
+        // L'utilisateur peut charger plus via le bouton "Voir plus".
+        $messages = Message::where('match_id', $matchId)
+            ->with(['sender.profile', 'attachments'])
+            ->orderBy('created_at', 'desc')
+            ->limit(self::MESSAGES_PER_PAGE)
+            ->get()
+            ->reverse()
+            ->values();
 
-        // Marquer comme lus
-        $match->messages()
+        $hasMore = Message::where('match_id', $matchId)->count() > self::MESSAGES_PER_PAGE;
+
+        // Charger les profils pour l'en-tête du chat
+        $match->load(['user1.profile', 'user2.profile']);
+
+        // Marquer comme lus en une seule requête (UPDATE batch)
+        $unreadCount = Message::where('match_id', $matchId)
             ->whereNull('read_at')
             ->where('sender_id', '!=', $user->id)
-            ->update(['read_at' => now()]);
+            ->count();
+
+        if ($unreadCount > 0) {
+            Message::where('match_id', $matchId)
+                ->whereNull('read_at')
+                ->where('sender_id', '!=', $user->id)
+                ->update(['read_at' => now()]);
+
+            // Invalider le cache nav badges (les messages sont lus)
+            SwipeController::invalidateUserCaches($user->id);
+        }
 
         // Marquer les notifications de messages de ce match comme lues
         $user->unreadNotifications->filter(function ($notif) use ($matchId) {
@@ -47,14 +68,54 @@ class MessageController extends Controller
         })->each->markAsRead();
 
         return view('messages.chat', [
-            'match' => $match,
-            'messages' => $match->messages,
+            'match'    => $match,
+            'messages' => $messages,
+            'hasMore'  => $hasMore,
+        ]);
+    }
+
+    /**
+     * Charger les messages plus anciens (scroll infini vers le haut).
+     */
+    public function loadMore(Request $request, int $matchId)
+    {
+        $user  = Auth::user();
+        $match = $this->getAuthorizedMatch($matchId, $user->id);
+
+        $beforeId = (int) $request->input('before_id', PHP_INT_MAX);
+
+        $messages = Message::where('match_id', $matchId)
+            ->where('id', '<', $beforeId)
+            ->with(['sender.profile', 'attachments'])
+            ->orderBy('created_at', 'desc')
+            ->limit(self::MESSAGES_PER_PAGE)
+            ->get()
+            ->reverse()
+            ->values();
+
+        $hasMore = Message::where('match_id', $matchId)
+            ->where('id', '<', $messages->first()?->id ?? 0)
+            ->exists();
+
+        return response()->json([
+            'messages' => $messages->map(function ($msg) use ($user) {
+                return [
+                    'id'           => $msg->id,
+                    'message'      => $msg->message,
+                    'sender_id'    => $msg->sender_id,
+                    'is_me'        => $msg->sender_id === $user->id,
+                    'time'         => $msg->created_at->format('H:i'),
+                    'attachments'  => $msg->attachments->map(fn($a) => ['url' => $a->url]),
+                    'read_at'      => $msg->read_at,
+                ];
+            }),
+            'has_more' => $hasMore,
         ]);
     }
 
     public function send(Request $request, int $matchId)
     {
-        $user = Auth::user();
+        $user  = Auth::user();
         $match = $this->getAuthorizedMatch($matchId, $user->id);
 
         if ($match->isBlocked()) {
@@ -62,8 +123,8 @@ class MessageController extends Controller
         }
 
         $request->validate([
-            'message' => 'nullable|string|max:2000',
-            'attachment' => 'nullable|array|max:5',
+            'message'      => 'nullable|string|max:2000',
+            'attachment'   => 'nullable|array|max:5',
             'attachment.*' => 'image|max:5120',
         ]);
 
@@ -72,33 +133,34 @@ class MessageController extends Controller
         }
 
         $message = Message::create([
-            'match_id' => $matchId,
+            'match_id'  => $matchId,
             'sender_id' => $user->id,
-            'message' => $request->message,
+            'message'   => $request->message,
         ]);
 
-        // Pièces jointes
         if ($request->hasFile('attachment')) {
             foreach ($request->file('attachment') as $file) {
                 Attachment::create([
                     'message_id' => $message->id,
-                    'file_path' => $file->store('attachments', config('filesystems.default') === 's3' ? 's3' : 'public'),
-                    'file_type' => $file->getMimeType(),
+                    'file_path'  => $file->store('attachments', config('filesystems.default') === 's3' ? 's3' : 'public'),
+                    'file_type'  => $file->getMimeType(),
                 ]);
             }
         }
 
-        // Recharger avec les relations pour le broadcast
         $message->load(['sender.profile', 'attachments']);
 
-        // 🔥 Broadcast en temps réel
         broadcast(new MessageSent($message))->toOthers();
 
-        // 📩 Notification pour l'autre utilisateur
         $otherUser = $match->getOtherUser($user->id);
         $otherUser->notify(new NewMessageNotification($message));
 
-        // Après le message :
+        // Invalider le cache nav de l'autre utilisateur (nouveau message non lu)
+        SwipeController::invalidateUserCaches($otherUser->id);
+        // Invalider le cache de la liste des matchs (last_message à jour)
+        Cache::forget("matches_for_{$user->id}");
+        Cache::forget("matches_for_{$otherUser->id}");
+
         app(WebPushService::class)->notifyNewMessage(
             $otherUser,
             Auth::user()->name,
@@ -106,12 +168,8 @@ class MessageController extends Controller
             $match->id
         );
 
-
         if ($request->expectsJson()) {
-            return response()->json([
-                'success' => true,
-                'message_id' => $message->id,
-            ]);
+            return response()->json(['success' => true, 'message_id' => $message->id]);
         }
 
         return back();
@@ -119,7 +177,7 @@ class MessageController extends Controller
 
     public function block(int $matchId)
     {
-        $user = Auth::user();
+        $user  = Auth::user();
         $match = $this->getAuthorizedMatch($matchId, $user->id);
 
         if ($match->user1_id === $user->id) {
@@ -129,21 +187,22 @@ class MessageController extends Controller
         }
         $match->save();
 
+        SwipeController::invalidateUserCaches($user->id);
+
         return redirect()->route('matches')->with('success', 'Utilisateur bloqué.');
     }
 
     public function report(Request $request, int $matchId)
     {
-        $user = Auth::user();
+        $user  = Auth::user();
         $match = $this->getAuthorizedMatch($matchId, $user->id);
 
-        $reportedUserId = $match->user1_id === $user->id
-            ? $match->user2_id : $match->user1_id;
+        $reportedUserId = $match->user1_id === $user->id ? $match->user2_id : $match->user1_id;
 
         Report::create([
-            'reporter_id' => $user->id,
+            'reporter_id'      => $user->id,
             'reported_user_id' => $reportedUserId,
-            'reason' => $request->reason ?? 'Signalé depuis le chat',
+            'reason'           => $request->reason ?? 'Signalé depuis le chat',
         ]);
 
         return back()->with('success', 'Signalement envoyé. Merci.');
@@ -151,24 +210,21 @@ class MessageController extends Controller
 
     public function delete(int $matchId)
     {
-        $user = Auth::user();
+        $user  = Auth::user();
         $match = $this->getAuthorizedMatch($matchId, $user->id);
         $match->messages()->delete();
         $match->delete();
 
+        SwipeController::invalidateUserCaches($user->id);
+
         return redirect()->route('matches')->with('success', 'Conversation supprimée.');
     }
 
-    /**
-     * Typing indicator - broadcast en temps réel.
-     */
     public function typing(int $matchId)
     {
         $user = Auth::user();
         $this->getAuthorizedMatch($matchId, $user->id);
-
         broadcast(new UserTyping($matchId, $user->id, $user->name))->toOthers();
-
         return response()->json(['status' => 'ok']);
     }
 

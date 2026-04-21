@@ -149,6 +149,10 @@
         .menu-appear {
             animation: fadeIn 0.15s ease;
         }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
     </style>
 </head>
 
@@ -214,6 +218,22 @@ $otherPhoto = $otherProfile?->photo_url ?? 'https://ui-avatars.com/api/?backgrou
 
         {{-- MESSAGES --}}
         <main id="chat-area" class="flex-1 overflow-y-auto chat-scroll px-4 py-4 space-y-2.5">
+
+            {{-- ── BOUTON "VOIR PLUS" (messages plus anciens) ── --}}
+            @if(!$messages->isEmpty() && $hasMore)
+            <div id="load-more-wrap" class="flex justify-center pt-1 pb-3">
+                <button id="load-more-btn"
+                    onclick="loadOlderMessages()"
+                    class="flex items-center gap-2 px-4 py-2 rounded-2xl text-[11px] font-semibold text-white/40 transition active:scale-95"
+                    style="background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07);">
+                    <svg id="load-more-icon" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7"/>
+                    </svg>
+                    Voir les messages précédents
+                </button>
+            </div>
+            @endif
+
             @if($messages->isEmpty())
             @php
             // Icebreakers contextuels selon les intérêts du profil
@@ -456,6 +476,102 @@ $otherPhoto = $otherProfile?->photo_url ?? 'https://ui-avatars.com/api/?backgrou
         const statusText = document.getElementById('status-text');
         const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
         const otherPhoto = <?php echo json_encode($otherPhoto); ?>;
+
+        // ID du premier message visible (pour charger les plus anciens)
+        let oldestMsgId = <?php echo json_encode($messages->first()?->id ?? null); ?>;
+        let loadingMore = false;
+
+        // ═══════════════════════════════════════
+        // CHARGER LES MESSAGES PLUS ANCIENS
+        // ═══════════════════════════════════════
+        async function loadOlderMessages() {
+            if (loadingMore || !oldestMsgId) return;
+            loadingMore = true;
+
+            const btn  = document.getElementById('load-more-btn');
+            const icon = document.getElementById('load-more-icon');
+            if (btn) {
+                btn.disabled = true;
+                icon.style.animation = 'spin 0.8s linear infinite';
+            }
+
+            try {
+                const res  = await fetch('/messages/' + matchId + '/more?before_id=' + oldestMsgId, {
+                    headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken }
+                });
+                const data = await res.json();
+
+                if (!data.messages || data.messages.length === 0) {
+                    document.getElementById('load-more-wrap')?.remove();
+                    return;
+                }
+
+                // Sauvegarder la position de scroll actuelle
+                const scrollBottomBefore = chatArea.scrollHeight - chatArea.scrollTop;
+
+                // Insérer les messages en haut
+                const anchor = document.getElementById('load-more-wrap') || chatArea.firstChild;
+                data.messages.forEach(msg => {
+                    const el = buildMessageElement(msg);
+                    chatArea.insertBefore(el, anchor);
+                });
+
+                // Mettre à jour l'ID le plus ancien
+                oldestMsgId = data.messages[0]?.id ?? null;
+
+                // Masquer le bouton si plus rien à charger
+                if (!data.has_more) {
+                    document.getElementById('load-more-wrap')?.remove();
+                }
+
+                // Restaurer la position de scroll (rester au même endroit visuel)
+                chatArea.scrollTop = chatArea.scrollHeight - scrollBottomBefore;
+
+            } catch (e) {
+                console.error('loadOlderMessages error:', e);
+            } finally {
+                loadingMore = false;
+                if (btn) {
+                    btn.disabled = false;
+                    icon.style.animation = '';
+                }
+            }
+        }
+
+        // Construire un élément message depuis les données JSON
+        function buildMessageElement(msg) {
+            const isMe = msg.is_me;
+            const div  = document.createElement('div');
+            div.className = 'flex items-end gap-2 max-w-[80%] msg-in' + (isMe ? ' ml-auto flex-row-reverse' : '');
+            div.style.marginTop = '10px';
+
+            let avatarHtml = '';
+            if (!isMe) {
+                avatarHtml = '<img src="' + otherPhoto + '" class="w-6 h-6 rounded-full object-cover flex-shrink-0" alt="">';
+            }
+
+            let contentHtml = '';
+            if (msg.message) {
+                contentHtml += '<p class="text-[13px] leading-relaxed ' + (isMe ? 'text-white' : 'text-white/80') + ' break-words">' + esc(msg.message) + '</p>';
+            }
+            if (msg.attachments && msg.attachments.length) {
+                contentHtml += '<div class="flex flex-wrap gap-1.5' + (msg.message ? ' mt-2' : '') + '">';
+                msg.attachments.forEach(a => {
+                    contentHtml += '<a href="' + a.url + '" target="_blank"><img src="' + a.url + '" class="w-32 h-32 object-cover rounded-xl img-preview" loading="lazy"></a>';
+                });
+                contentHtml += '</div>';
+            }
+
+            const readBadge = (isMe && msg.read_at) ? '<span class="text-blue-400/60 ml-0.5">✓✓</span>' : '';
+
+            div.innerHTML = avatarHtml +
+                '<div class="' + (isMe ? 'items-end' : 'items-start') + ' flex flex-col">' +
+                '<div class="' + (isMe ? 'bubble-sent' : 'bubble-received') + ' px-3.5 py-2.5 max-w-full">' + contentHtml + '</div>' +
+                '<span class="text-[9px] text-white/15 mt-1 px-1 ' + (isMe ? 'text-right' : '') + '" style="font-family:monospace">' + msg.time + readBadge + '</span>' +
+                '</div>';
+
+            return div;
+        }
 
         // ═══════════════════════════════════════
         // PUSHER REAL-TIME

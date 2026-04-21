@@ -1,28 +1,39 @@
 @php
     $currentRoute = request()->route()?->getName();
 
-    // Badges — requêtes légères, résultats mis en cache 60s par user
     $navBadges = ['matches' => 0, 'likes' => 0];
     if (auth()->check()) {
         $userId = auth()->id();
 
-        // Messages non lus sur mes matchs
-        $myMatchIds = \App\Models\Matche::forUser($userId)->pluck('id');
-        $navBadges['matches'] = $myMatchIds->isEmpty() ? 0
-            : \Illuminate\Support\Facades\DB::table('messages')
-                ->whereIn('match_id', $myMatchIds)
-                ->where('sender_id', '!=', $userId)
-                ->whereNull('read_at')
-                ->count();
+        // ── Cache 60 s — évite 3 requêtes SQL sur CHAQUE page ──────────
+        // Invalidé automatiquement dans SwipeController::invalidateUserCaches()
+        // après like, pass, message lu, nouveau match
+        $cached = \Illuminate\Support\Facades\Cache::remember(
+            "nav_badges_{$userId}",
+            60,
+            function () use ($userId) {
+                $myMatchIds = \App\Models\Matche::forUser($userId)->pluck('id');
 
-        // Likes en attente (personnes qui m'ont liké sans match encore)
-        $matchedIds = \App\Models\Matche::forUser($userId)->get()
-            ->map(fn($m) => $m->user1_id === $userId ? $m->user2_id : $m->user1_id);
-        $myLikedIds = \App\Models\Like::where('user_id', $userId)->pluck('liked_user_id');
-        $navBadges['likes'] = \App\Models\Like::where('liked_user_id', $userId)
-            ->whereNotIn('user_id', $matchedIds)
-            ->whereNotIn('user_id', $myLikedIds)
-            ->count();
+                $unreadMessages = $myMatchIds->isEmpty() ? 0
+                    : \Illuminate\Support\Facades\DB::table('messages')
+                        ->whereIn('match_id', $myMatchIds)
+                        ->where('sender_id', '!=', $userId)
+                        ->whereNull('read_at')
+                        ->count();
+
+                $matchedIds  = \App\Models\Matche::forUser($userId)->get()
+                    ->map(fn($m) => $m->user1_id === $userId ? $m->user2_id : $m->user1_id);
+                $myLikedIds  = \App\Models\Like::where('user_id', $userId)->pluck('liked_user_id');
+                $pendingLikes = \App\Models\Like::where('liked_user_id', $userId)
+                    ->whereNotIn('user_id', $matchedIds)
+                    ->whereNotIn('user_id', $myLikedIds)
+                    ->count();
+
+                return ['matches' => $unreadMessages, 'likes' => $pendingLikes];
+            }
+        );
+
+        $navBadges = $cached;
     }
 @endphp
 
@@ -47,7 +58,6 @@
            class="flex flex-col items-center gap-1 px-4 py-2 rounded-2xl transition-all duration-300 relative
                   {{ $isActive ? 'bg-gradient-to-r from-[#ff5e6c] to-[#ff8a5c] shadow-lg shadow-[#ff5e6c]/20' : 'hover:bg-white/5' }}">
 
-            {{-- Icône --}}
             @if($item['icon'] === 'fire')
             <svg class="w-5 h-5 {{ $isActive ? 'text-white' : 'text-white/40' }}" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M12 23c-3.6 0-7-2.4-7-7 0-3.1 2.1-5.7 4-7.8l.7-.7c.4-.5 1.1-.5 1.5 0 .6.6 1.3 1.1 2 1.5-.3-1.5-.2-3.1.5-4.5.3-.6 1.1-.7 1.5-.2C17.5 7 19 10.3 19 13.5 19 18.2 16.6 23 12 23z"/>
@@ -68,7 +78,6 @@
 
             <span class="text-[10px] font-medium {{ $isActive ? 'text-white' : 'text-white/30' }}">{{ $item['label'] }}</span>
 
-            {{-- Badge --}}
             @if($badge > 0 && !$isActive)
             <span class="absolute top-1 right-2 min-w-[16px] h-4 flex items-center justify-center rounded-full text-[9px] font-bold text-white px-1 leading-none"
                   style="background: #ff5e6c; box-shadow: 0 2px 8px rgba(255,94,108,0.5);">

@@ -132,6 +132,7 @@ Route::middleware(['auth', 'subscription'])->group(function () {
     // Messages
     Route::get('/messages/{match}', [MessageController::class, 'show'])->name('messages.chat')->where('match', '[0-9]+');
     Route::post('/messages/{match}', [MessageController::class, 'send'])->name('messages.send')->where('match', '[0-9]+');
+    Route::get('/messages/{match}/more', [MessageController::class, 'loadMore'])->name('messages.more')->where('match', '[0-9]+');
     Route::post('/messages/{match}/block', [MessageController::class, 'block'])->name('messages.block');
     Route::post('/messages/{match}/report', [MessageController::class, 'report'])->name('messages.report');
     Route::delete('/messages/{match}/delete', [MessageController::class, 'delete'])->name('messages.delete');
