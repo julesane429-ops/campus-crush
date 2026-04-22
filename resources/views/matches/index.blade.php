@@ -28,7 +28,7 @@ style="animation-delay: {{ $delay }}s">
                         <div class="relative">
                             <div class="w-[60px] h-[60px] rounded-full p-[2px]" style="background: linear-gradient(135deg, #ff5e6c, #ffc145);">
                                 <div class="w-full h-full rounded-full overflow-hidden">
-                                    <img src="{{ $match['photo'] }}" class="w-full h-full object-cover" alt="{{ e($match['name']) }}">
+                                    <img src="{{ $match['photo'] }}" class="w-full h-full object-cover" loading="lazy" alt="{{ e($match['name']) }}">
                                 </div>
                             </div>
                             @if($match['unread'] > 0)
@@ -58,7 +58,7 @@ style="animation-delay: {{ $delay }}s">
 style="animation-delay: {{ $delay }}s">
 
                 <div class="relative flex-shrink-0">
-                    <img src="{{ $match['photo'] }}" class="w-13 h-13 rounded-full object-cover" style="width:52px;height:52px;" alt="">
+                    <img src="{{ $match['photo'] }}" class="w-13 h-13 rounded-full object-cover" style="width:52px;height:52px;" loading="lazy" alt="">
                 </div>
 
                 <div class="flex-1 min-w-0">

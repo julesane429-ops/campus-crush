@@ -5,9 +5,10 @@ namespace App\Notifications;
 use App\Models\Matche;
 use App\Models\User;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Notification;
 
-class NewMatchNotification extends Notification
+class NewMatchNotification extends Notification implements ShouldQueue
 {
     use Queueable;
 
