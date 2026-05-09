@@ -12,6 +12,13 @@ class CheckBanned
     public function handle(Request $request, Closure $next): Response
     {
         if (Auth::check() && Auth::user()->isBanned()) {
+            if ($request->expectsJson() || $request->is('api/*')) {
+                return response()->json([
+                    'error'   => 'banned',
+                    'message' => 'Votre compte a été suspendu. Contactez le support.',
+                ], 403);
+            }
+
             Auth::logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();

@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use App\Models\Profile;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -13,6 +14,15 @@ class ProfileTest extends TestCase
     public function test_profile_page_is_displayed(): void
     {
         $user = User::factory()->create();
+        Profile::create([
+            'user_id' => $user->id,
+            'age' => 20,
+            'gender' => 'homme',
+            'ufr' => 'SAT',
+            'level' => 'L2',
+            'bio' => 'Profil de test',
+            'university' => 'UGB',
+        ]);
 
         $response = $this
             ->actingAs($user)

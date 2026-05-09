@@ -11,6 +11,7 @@ use App\Models\Profile;
 use App\Models\Like;
 use App\Models\Matche;
 use App\Models\University;
+use Illuminate\Validation\Rule;
 
 class ProfileController extends Controller
 {
@@ -44,7 +45,7 @@ class ProfileController extends Controller
         }
 
         $validated = $request->validate([
-            'age'           => 'required|integer|min:17|max:60',
+            'age'           => 'required|integer|min:18|max:60',
             'gender'        => 'required|in:homme,femme',
             'ufr'           => 'required|string|max:20',
             'level'         => 'required|string|in:L1,L2,L3,M1,M2,D1,D2,D3',
@@ -166,23 +167,56 @@ class ProfileController extends Controller
     {
         $user    = Auth::user();
         $profile = $user->profile;
+
+        $profileFields = ['age', 'gender', 'ufr', 'level', 'bio', 'promotion', 'photo', 'university_id', 'interests'];
+        $hasProfilePayload = collect($profileFields)->contains(fn($field) => $request->has($field) || $request->hasFile($field));
+
+        if (!$hasProfilePayload) {
+            $validatedAccount = $request->validate([
+                'name'  => ['required', 'string', 'max:255'],
+                'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
+            ]);
+
+            $emailChanged = $validatedAccount['email'] !== $user->email;
+            $user->forceFill([
+                'name'              => $validatedAccount['name'],
+                'email'             => $validatedAccount['email'],
+                'email_verified_at' => $emailChanged ? null : $user->email_verified_at,
+            ])->save();
+
+            return redirect('/profile')->with('status', 'profile-updated');
+        }
+
         if (!$profile) return redirect()->route('profile.create');
 
-        if ($request->filled('name')) {
-            $request->validate(['name' => 'required|string|max:255']);
-            $user->update(['name' => $request->name]);
+        if ($request->filled('name') || $request->filled('email')) {
+            $validatedAccount = $request->validate([
+                'name'  => ['sometimes', 'required', 'string', 'max:255'],
+                'email' => ['sometimes', 'required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
+            ]);
 
-            $baseSlug = \Illuminate\Support\Str::slug($request->name);
-            $slug = $baseSlug;
-            $i = 1;
-            while (\App\Models\User::where('slug', $slug)->where('id', '!=', $user->id)->exists()) {
-                $slug = $baseSlug . '-' . $i++;
+            if (isset($validatedAccount['name'])) {
+                $user->update(['name' => $validatedAccount['name']]);
+
+                $baseSlug = \Illuminate\Support\Str::slug($validatedAccount['name']);
+                $slug = $baseSlug;
+                $i = 1;
+                while (\App\Models\User::where('slug', $slug)->where('id', '!=', $user->id)->exists()) {
+                    $slug = $baseSlug . '-' . $i++;
+                }
+                $user->update(['slug' => $slug]);
             }
-            $user->update(['slug' => $slug]);
+
+            if (isset($validatedAccount['email']) && $validatedAccount['email'] !== $user->email) {
+                $user->forceFill([
+                    'email' => $validatedAccount['email'],
+                    'email_verified_at' => null,
+                ])->save();
+            }
         }
 
         $validated = $request->validate([
-            'age'           => 'required|integer|min:17|max:60',
+            'age'           => 'required|integer|min:18|max:60',
             'gender'        => 'required|in:homme,femme',
             'ufr'           => 'required|string|max:20',
             'level'         => 'required|string|in:L1,L2,L3,M1,M2,D1,D2,D3',
@@ -190,6 +224,7 @@ class ProfileController extends Controller
             'promotion'     => 'nullable|string|max:10',
             'photo'         => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
             'university_id' => 'nullable|exists:universities,id',
+            'interests'     => 'nullable|string|max:500',
         ]);
 
         $data = [
@@ -199,6 +234,7 @@ class ProfileController extends Controller
             'level'     => $validated['level'],
             'bio'       => $validated['bio'],
             'promotion' => $validated['promotion'] ?? $profile->promotion,
+            'interests' => $validated['interests'] ?? $profile->interests,
         ];
 
         if (isset($validated['university_id'])) {

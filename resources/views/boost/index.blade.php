@@ -187,19 +187,26 @@
             <div>
                 <p class="text-xs font-semibold mb-3" style="color:rgba(255,255,255,0.40); letter-spacing:0.06em;">MOYEN DE PAIEMENT</p>
                 <div class="space-y-2" id="methods">
+                    @php $waveEnabled = (bool) config('paydunya.wave_enabled', true); @endphp
                     @foreach([
                     ['orange_money', '🟠', 'Orange Money'],
                     ['wave', '🔵', 'Wave'],
                     ['free_money', '🟢', 'Free Money'],
                     ] as [$val, $icon, $label])
+                    @if($val === 'wave' && !$waveEnabled)
+                        @continue
+                    @endif
                     <label class="method-btn" onclick="selectMethod(this, '{{ $val }}')">
-                        <input type="radio" name="payment_method" value="{{ $val }}" {{ old('payment_method') === $val ? 'checked' : '' }}>
+                        <input type="radio" name="payment_method" value="{{ $val }}" required {{ old('payment_method', 'orange_money') === $val ? 'checked' : '' }}>
                         <span class="text-xl">{{ $icon }}</span>
                         <span class="font-medium text-sm text-white">{{ $label }}</span>
                         <span class="ml-auto text-xs" style="color:rgba(255,255,255,0.30);">500 FCFA</span>
                     </label>
                     @endforeach
                 </div>
+                @unless($waveEnabled)
+                <p class="text-[11px] text-yellow-300/70 mt-2">Wave est temporairement indisponible via PayDunya. Orange Money fonctionne.</p>
+                @endunless
                 @error('payment_method')
                 <p class="text-red-400 text-xs mt-1">{{ $message }}</p>
                 @enderror
@@ -227,7 +234,7 @@
                 <div class="space-y-2.5">
                     <div class="flex items-start gap-2.5">
                         <span class="w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center text-[10px] font-bold" style="background:rgba(59,130,246,0.15); color:#60a5fa;">1</span>
-                        <p class="text-[11px] text-white/45 leading-relaxed">Choisis Orange Money, Wave ou Free Money ci-dessus et entre ton numéro</p>
+                        <p class="text-[11px] text-white/45 leading-relaxed">Choisis un moyen disponible ci-dessus et entre ton numéro</p>
                     </div>
                     <div class="flex items-start gap-2.5">
                         <span class="w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center text-[10px] font-bold" style="background:rgba(59,130,246,0.15); color:#60a5fa;">2</span>

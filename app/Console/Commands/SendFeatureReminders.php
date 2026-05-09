@@ -2,13 +2,13 @@
 
 namespace App\Console\Commands;
 
-use App\Models\User;
+use App\Models\AnonymousCrush;
 use App\Models\Like;
 use App\Models\Matche;
-use App\Models\AnonymousCrush;
 use App\Models\Referral;
 use App\Models\Review;
-use App\Services\WebPushService;
+use App\Models\User;
+use App\Services\ExpoPushService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
 
@@ -19,16 +19,14 @@ class SendFeatureReminders extends Command
 
     public function handle()
     {
-        $webPush = app(WebPushService::class);
+        $expoPush = app(ExpoPushService::class);
         $sent = 0;
 
-        // Utilisateurs actifs ces 3 derniers jours avec un profil
         $users = User::whereHas('profile', function ($q) {
             $q->where('last_seen_at', '>=', now()->subDays(3));
         })->with('profile')->get();
 
         foreach ($users as $user) {
-            // Max 1 notification reminder par jour par utilisateur
             $cacheKey = "feature_reminder_{$user->id}_" . today()->toDateString();
             if (Cache::has($cacheKey)) continue;
 
@@ -36,11 +34,11 @@ class SendFeatureReminders extends Command
             if (!$reminder) continue;
 
             try {
-                $webPush->sendToUser(
+                $expoPush->send(
                     $user,
                     $reminder['title'],
                     $reminder['body'],
-                    $reminder['url']
+                    ['type' => 'feature_reminder', 'url' => $reminder['url']]
                 );
                 Cache::put($cacheKey, true, now()->endOfDay());
                 $sent++;
@@ -52,15 +50,11 @@ class SendFeatureReminders extends Command
         $this->info("✅ {$sent} rappels envoyés.");
     }
 
-    /**
-     * Choisir le rappel le plus pertinent pour cet utilisateur.
-     */
     private function pickReminder(User $user): ?array
     {
         $reminders = [];
         $profile = $user->profile;
 
-        // ── Crush anonyme (jamais utilisé) ──
         $crushCount = AnonymousCrush::where('sender_id', $user->id)->count();
         if ($crushCount === 0) {
             $reminders[] = [
@@ -71,7 +65,6 @@ class SendFeatureReminders extends Command
             ];
         }
 
-        // ── Crushes reçus non révélés ──
         $unrevealed = AnonymousCrush::where('target_user_id', $user->id)
             ->where('is_revealed', false)->count();
         if ($unrevealed > 0) {
@@ -79,11 +72,10 @@ class SendFeatureReminders extends Command
                 'title' => "💌 {$unrevealed} crush anonyme" . ($unrevealed > 1 ? 's' : '') . " !",
                 'body' => "Quelqu'un a un crush sur toi ! Ouvre l'app pour découvrir qui 👀",
                 'url' => '/crush',
-                'weight' => 10, // Haute priorité
+                'weight' => 10,
             ];
         }
 
-        // ── Likes reçus non matchés ──
         $unmatchedLikes = Like::where('liked_user_id', $user->id)
             ->whereNotIn('user_id', function ($q) use ($user) {
                 $q->select('user1_id')->from('matches')->where('user2_id', $user->id)
@@ -102,7 +94,6 @@ class SendFeatureReminders extends Command
             ];
         }
 
-        // ── Boost (pas boosté, inscrit > 5 jours) ──
         if (!$profile->isBoosted() && $user->created_at->lt(now()->subDays(5))) {
             $reminders[] = [
                 'title' => '🚀 Passe en tête du swipe !',
@@ -112,7 +103,6 @@ class SendFeatureReminders extends Command
             ];
         }
 
-        // ── Parrainage (< 3 filleuls) ──
         $referralCount = Referral::where('referrer_id', $user->id)->count();
         if ($referralCount < 3) {
             $reminders[] = [
@@ -123,7 +113,6 @@ class SendFeatureReminders extends Command
             ];
         }
 
-        // ── Avis (pas encore donné, inscrit > 7 jours) ──
         if (!Review::where('user_id', $user->id)->exists() && $user->created_at->lt(now()->subDays(7))) {
             $reminders[] = [
                 'title' => '⭐ Ton avis compte !',
@@ -133,7 +122,6 @@ class SendFeatureReminders extends Command
             ];
         }
 
-        // ── Streak bientôt récompensé ──
         $streak = $user->streak_days ?? 0;
         if ($streak === 6) {
             $reminders[] = [
@@ -151,7 +139,6 @@ class SendFeatureReminders extends Command
             ];
         }
 
-        // ── Abonnement expire bientôt ──
         $sub = $user->subscription;
         if ($sub && $sub->isActive() && $sub->daysRemaining() <= 3 && $sub->daysRemaining() > 0) {
             $days = $sub->daysRemaining();
@@ -171,17 +158,11 @@ class SendFeatureReminders extends Command
                 'weight' => 4,
             ];
         }
-        
+
         if (empty($reminders)) return null;
 
-        // Choisir avec pondération (les plus importants ont plus de chances)
         usort($reminders, fn($a, $b) => $b['weight'] <=> $a['weight']);
 
-        // 70% chance de prendre le plus important, 30% un aléatoire
-        if (rand(1, 100) <= 70) {
-            return $reminders[0];
-        }
-
-        return $reminders[array_rand($reminders)];
+        return rand(1, 100) <= 70 ? $reminders[0] : $reminders[array_rand($reminders)];
     }
 }

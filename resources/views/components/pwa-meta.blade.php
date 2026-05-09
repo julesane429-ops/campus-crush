@@ -361,6 +361,14 @@ document.addEventListener('DOMContentLoaded', function () {
 <script>
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
+        const authPath = ['/login', '/register', '/forgot-password', '/reset-password'].some(path => location.pathname.startsWith(path));
+
+        if (authPath && 'caches' in window) {
+            caches.keys()
+                .then(keys => Promise.all(keys.filter(key => key.startsWith('cc-pages')).map(key => caches.delete(key))))
+                .catch(() => {});
+        }
+
         navigator.serviceWorker.register('/sw.js')
             .then(reg => console.log('🔥 SW registered'))
             .catch(err => console.log('SW error:', err));

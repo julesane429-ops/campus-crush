@@ -49,6 +49,14 @@ class CheckSubscription
         $sub = $user->getOrCreateSubscription();
 
         if (!$sub->isActive()) {
+            if ($request->expectsJson() || $request->is('api/*')) {
+                return response()->json([
+                    'error'   => 'subscription_required',
+                    'message' => 'Abonnement requis.',
+                    'days_remaining' => 0,
+                ], 403);
+            }
+
             return redirect()->route('subscription.index')
                 ->with('error', 'Votre abonnement a expiré. Renouvelez pour continuer.');
         }

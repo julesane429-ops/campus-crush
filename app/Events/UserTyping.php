@@ -32,4 +32,16 @@ class UserTyping implements ShouldBroadcastNow
     {
         return 'UserTyping';
     }
+
+    public function broadcastWith(): array
+    {
+        return [
+            'matchId' => $this->matchId,
+            'match_id' => $this->matchId,
+            'userId' => $this->userId,
+            'user_id' => $this->userId,
+            'userName' => $this->userName,
+            'user_name' => $this->userName,
+        ];
+    }
 }

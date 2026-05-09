@@ -92,6 +92,31 @@
                 <div class="text-right text-[10px] text-white/20 mt-1"><span id="bio-count">{{ $bioLen }}</span>/200</div>
             </div>
 
+            {{-- Intérêts --}}
+            @php
+                $interestOptions = ['Musique','Sport','Cinéma','Lecture','Voyage','Cuisine','Gaming','Art','Danse','Photo','Mode','Fitness','Tech','Théâtre','Foot','Basket','Séries','Yoga','Natation','Dessin','Rap','Podcast','Politique','Écriture'];
+                $currentInterests = $profile->interests_array ?? [];
+            @endphp
+            <div>
+                <label class="text-xs text-white/40 uppercase tracking-wider mb-2 block">
+                    Intérêts
+                    <span id="interests-count" class="ml-1 text-[#ff5e6c]/70 normal-case">{{ count($currentInterests) > 0 ? '('.count($currentInterests).' sélectionné'.( count($currentInterests) > 1 ? 's' : '').')' : '' }}</span>
+                </label>
+                <div class="flex flex-wrap gap-2">
+                    @foreach($interestOptions as $opt)
+                    @php $selected = in_array($opt, $currentInterests); @endphp
+                    <button type="button" data-interest="{{ $opt }}"
+                        class="interest-chip px-3.5 py-2 rounded-full text-xs font-medium border transition active:scale-95"
+                        style="{{ $selected
+                            ? 'background:rgba(255,94,108,0.18);border-color:rgba(255,94,108,0.5);color:#fff;'
+                            : 'background:rgba(255,255,255,0.04);border-color:rgba(255,255,255,0.1);color:rgba(255,255,255,0.4);' }}">
+                        {{ $opt }}
+                    </button>
+                    @endforeach
+                </div>
+                <input type="hidden" id="interests-input" name="interests" value="{{ implode(',', $currentInterests) }}">
+            </div>
+
             <button type="submit" class="w-full py-4 rounded-2xl font-semibold text-white transition hover:-translate-y-0.5" style="background: linear-gradient(135deg, #ff5e6c, #ff8a5c); box-shadow: 0 8px 30px rgba(255,94,108,0.3);">
                 Enregistrer
             </button>
@@ -116,6 +141,39 @@ document.querySelectorAll('.level-btn').forEach(b => b.addEventListener('click',
 }));
 const bio = document.getElementById('bio');
 bio.addEventListener('input', () => document.getElementById('bio-count').textContent = bio.value.length);
+
+// ── Intérêts chips ──────────────────────────────────────────────────────
+(function() {
+    const input = document.getElementById('interests-input');
+    const countEl = document.getElementById('interests-count');
+    let selected = input.value ? input.value.split(',').map(s => s.trim()).filter(Boolean) : [];
+
+    function updateCount() {
+        countEl.textContent = selected.length > 0
+            ? '(' + selected.length + ' sélectionné' + (selected.length > 1 ? 's' : '') + ')'
+            : '';
+        input.value = selected.join(',');
+    }
+
+    document.querySelectorAll('.interest-chip').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const val = btn.dataset.interest;
+            const idx = selected.indexOf(val);
+            if (idx >= 0) {
+                selected.splice(idx, 1);
+                btn.style.background = 'rgba(255,255,255,0.04)';
+                btn.style.borderColor = 'rgba(255,255,255,0.1)';
+                btn.style.color = 'rgba(255,255,255,0.4)';
+            } else {
+                selected.push(val);
+                btn.style.background = 'rgba(255,94,108,0.18)';
+                btn.style.borderColor = 'rgba(255,94,108,0.5)';
+                btn.style.color = '#fff';
+            }
+            updateCount();
+        });
+    });
+})();
 </script>
 @endpush
 @endsection

@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Channels\ExpoPushChannel;
 use App\Models\Matche;
 use App\Models\User;
 use Illuminate\Bus\Queueable;
@@ -19,7 +20,7 @@ class NewMatchNotification extends Notification implements ShouldQueue
 
     public function via(object $notifiable): array
     {
-        return ['database'];
+        return ['database', ExpoPushChannel::class];
     }
 
     public function toArray(object $notifiable): array
@@ -31,6 +32,15 @@ class NewMatchNotification extends Notification implements ShouldQueue
             'user_name' => $this->otherUser->name,
             'user_photo' => $this->otherUser->profile?->photo_url,
             'message' => $this->otherUser->name . ' et toi avez matché ! 🎉',
+        ];
+    }
+
+    public function toExpoPush(object $notifiable): array
+    {
+        return [
+            '❤️ Nouveau match !',
+            "Tu as matché avec {$this->otherUser->name} !",
+            ['type' => 'new_match', 'match_id' => $this->match->id],
         ];
     }
 }

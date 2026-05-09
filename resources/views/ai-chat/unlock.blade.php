@@ -71,15 +71,22 @@
             <div>
                 <p class="text-xs font-semibold mb-3" style="color:rgba(255,255,255,0.40); letter-spacing:0.06em;">MOYEN DE PAIEMENT</p>
                 <div class="space-y-2">
+                    @php $waveEnabled = (bool) config('paydunya.wave_enabled', true); @endphp
                     @foreach([['orange_money','🟠','Orange Money'],['wave','🔵','Wave'],['free_money','🟢','Free Money']] as [$val,$icon,$label])
+                    @if($val === 'wave' && !$waveEnabled)
+                        @continue
+                    @endif
                     <label class="method-btn" onclick="selectMethod(this,'{{ $val }}')">
-                        <input type="radio" name="payment_method" value="{{ $val }}">
+                        <input type="radio" name="payment_method" value="{{ $val }}" required {{ old('payment_method', 'orange_money') === $val ? 'checked' : '' }}>
                         <span class="text-xl">{{ $icon }}</span>
                         <span class="font-medium text-sm text-white">{{ $label }}</span>
                         <span class="ml-auto text-xs" style="color:rgba(255,255,255,0.30);">500 FCFA</span>
                     </label>
                     @endforeach
                 </div>
+                @unless($waveEnabled)
+                <p class="text-[11px] text-yellow-300/70 mt-2">Wave est temporairement indisponible via PayDunya. Orange Money fonctionne.</p>
+                @endunless
             </div>
 
             <div>
@@ -124,6 +131,9 @@
         el.classList.add('selected');
         el.querySelector('input[type=radio]').checked = true;
     }
+    document.querySelectorAll('.method-btn input[type=radio]').forEach(r => {
+        if (r.checked) r.closest('.method-btn').classList.add('selected');
+    });
     </script>
 </body>
 </html>

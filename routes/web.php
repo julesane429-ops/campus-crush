@@ -9,6 +9,13 @@ use App\Http\Controllers\MessageController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\AdminController;
 use App\Http\Controllers\SubscriptionController;
+use App\Http\Controllers\Auth\ConfirmablePasswordController;
+use App\Http\Controllers\Auth\EmailVerificationNotificationController;
+use App\Http\Controllers\Auth\EmailVerificationPromptController;
+use App\Http\Controllers\Auth\NewPasswordController;
+use App\Http\Controllers\Auth\PasswordController;
+use App\Http\Controllers\Auth\PasswordResetLinkController;
+use App\Http\Controllers\Auth\VerifyEmailController;
 use Illuminate\Support\Facades\Route;
 
 // ── Public ──
@@ -17,6 +24,7 @@ Route::get('/install', fn() => view('install'))->name('install');
 Route::get('/terms', fn() => view('legal.terms'))->name('legal.terms');
 Route::get('/privacy', fn() => view('legal.privacy'))->name('legal.privacy');
 Route::get('/safety', fn() => view('legal.safety'))->name('legal.safety');
+Route::get('/dashboard', [HomeController::class, 'index'])->middleware('auth')->name('dashboard');
 // Profil public partageable
 Route::get('/u/{slug}', function (string $slug) {
     $user = \App\Models\User::where('slug', $slug)->with('profile.universityModel')->firstOrFail();
@@ -30,9 +38,14 @@ Route::get('/u/{slug}', function (string $slug) {
 // ── Auth ──
 Route::middleware('guest')->group(function () {
     Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
-    Route::post('/register', [AuthController::class, 'register']);
+    Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:5,1');
     Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
-    Route::post('/login', [AuthController::class, 'login']);
+    Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
+
+    Route::get('/forgot-password', [PasswordResetLinkController::class, 'create'])->name('password.request');
+    Route::post('/forgot-password', [PasswordResetLinkController::class, 'store'])->name('password.email');
+    Route::get('/reset-password/{token}', [NewPasswordController::class, 'create'])->name('password.reset');
+    Route::post('/reset-password', [NewPasswordController::class, 'store'])->name('password.store');
 });
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth')->name('logout');
 
@@ -41,10 +54,21 @@ Route::post('/webhook/paydunya', [SubscriptionController::class, 'webhook'])->na
 
 // ── Routes auth (sans abonnement requis) ──
 Route::middleware('auth')->group(function () {
+    Route::get('/verify-email', EmailVerificationPromptController::class)->name('verification.notice');
+    Route::get('/verify-email/{id}/{hash}', VerifyEmailController::class)
+        ->middleware(['signed', 'throttle:6,1'])
+        ->name('verification.verify');
+    Route::post('/email/verification-notification', [EmailVerificationNotificationController::class, 'store'])
+        ->middleware('throttle:6,1')
+        ->name('verification.send');
+    Route::get('/confirm-password', [ConfirmablePasswordController::class, 'show'])->name('password.confirm');
+    Route::post('/confirm-password', [ConfirmablePasswordController::class, 'store']);
+    Route::put('/password', [PasswordController::class, 'update'])->name('password.update');
 
     // Profil
     Route::get('/profile/create', [ProfileController::class, 'create'])->name('profile.create');
     Route::post('/profile/store', [ProfileController::class, 'store'])->name('profile.store');
+    Route::get('/profile', [ProfileController::class, 'show'])->name('profile.index');
     Route::get('/me', [ProfileController::class, 'show'])->name('profile.show');
     Route::get('/profile/edit', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
@@ -120,8 +144,9 @@ Route::middleware(['auth', 'subscription'])->group(function () {
 
     // Swipe
     Route::get('/swipe', [SwipeController::class, 'index'])->name('swipe');
-    Route::post('/like/{id}', [SwipeController::class, 'like'])->where('id', '[0-9]+');
-    Route::post('/pass/{id}', [SwipeController::class, 'pass'])->where('id', '[0-9]+');
+    Route::post('/like/{id}',        [SwipeController::class, 'like'])->where('id', '[0-9]+');
+    Route::post('/pass/{id}',        [SwipeController::class, 'pass'])->where('id', '[0-9]+');
+    Route::delete('/swipe/undo/{id}',[SwipeController::class, 'undo'])->where('id', '[0-9]+')->name('swipe.undo');
     Route::get('/load-profiles', [SwipeController::class, 'loadMoreProfiles']);
     Route::get('/nav-counts', [SwipeController::class, 'navCounts']);
 

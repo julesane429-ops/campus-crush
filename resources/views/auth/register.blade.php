@@ -67,19 +67,19 @@
         <div class="rounded-3xl p-5 sm:p-7 fade-up d1" style="background: linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02)); border: 1px solid rgba(255,255,255,0.08); backdrop-filter: blur(40px);">
             <h2 class="text-lg font-semibold text-center mb-5">Créer un compte</h2>
 
-            <form id="signup-form" class="space-y-3.5">
+            <form id="signup-form" method="POST" action="{{ route('register') }}" class="space-y-3.5">
                 @csrf
-                <input type="text" id="prenom" placeholder="Prénom" required class="cc-input" autocomplete="given-name">
-                <input type="email" id="email" placeholder="Email" required class="cc-input" autocomplete="email">
+                <input type="text" name="prenom" id="prenom" placeholder="Prénom" required class="cc-input" autocomplete="given-name">
+                <input type="email" name="email" id="email" placeholder="Email" required class="cc-input" autocomplete="email">
                 <div class="relative">
-                    <input type="password" id="password" placeholder="Mot de passe (min. 6)" required class="cc-input pr-12" autocomplete="new-password">
+                    <input type="password" name="password" id="password" placeholder="Mot de passe (min. 8)" required class="cc-input pr-12" autocomplete="new-password">
                     <button type="button" onclick="const el=document.getElementById('password');el.type=el.type==='password'?'text':'password'" class="absolute right-4 top-1/2 -translate-y-1/2 text-white/25 hover:text-white/50 transition">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5">
                             <path stroke-linecap="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0zM2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
                         </svg>
                     </button>
                 </div>
-                <input type="password" id="password_confirmation" placeholder="Confirmer le mot de passe" required class="cc-input" autocomplete="new-password">
+                <input type="password" name="password_confirmation" id="password_confirmation" placeholder="Confirmer le mot de passe" required class="cc-input" autocomplete="new-password">
 
                 <div id="error-msg" class="hidden text-red-400 text-xs text-center bg-red-500/10 py-2.5 px-4 rounded-xl border border-red-500/10"></div>
                 <div id="success-msg" class="hidden text-green-400 text-xs text-center bg-green-500/10 py-2.5 px-4 rounded-xl border border-green-500/10"></div>
@@ -148,7 +148,7 @@
         btn.disabled = true; btn.textContent = 'Création...';
 
         try {
-            const r = await fetch('/register', {
+            const r = await fetch(this.action, {
                 method: 'POST',
                 headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content, 'Accept': 'application/json' },
                 body: fd

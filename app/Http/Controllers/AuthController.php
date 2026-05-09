@@ -18,7 +18,7 @@ class AuthController extends Controller
             session(['referral_code' => $request->input('ref')]);
         }
 
-        return view('auth.register');
+        return $this->noStoreView('auth.register');
     }
 
     public function register(Request $request)
@@ -26,7 +26,7 @@ class AuthController extends Controller
         $validated = $request->validate([
             'prenom'   => 'required|string|max:255',
             'email'    => 'required|email|unique:users,email',
-            'password' => ['required', 'confirmed', Password::min(6)],
+            'password' => ['required', 'confirmed', Password::min(8)],
             'terms' => 'required|accepted',
         ]);
 
@@ -85,12 +85,12 @@ class AuthController extends Controller
             ]);
         }
 
-        return redirect()->route('profile.create');
+        return redirect()->route('dashboard');
     }
 
     public function showLogin()
     {
-        return view('auth.login');
+        return $this->noStoreView('auth.login');
     }
 
     public function login(Request $request)
@@ -117,8 +117,7 @@ class AuthController extends Controller
                 return redirect()->intended('/admin');
             }
 
-            $redirect = Auth::user()->hasProfile() ? '/swipe' : '/profile/create';
-            return redirect()->intended($redirect);
+            return redirect()->intended(route('dashboard'));
         }
 
         return back()->withErrors([
@@ -132,5 +131,14 @@ class AuthController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
         return redirect('/');
+    }
+
+    private function noStoreView(string $view)
+    {
+        return response()
+            ->view($view)
+            ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+            ->header('Pragma', 'no-cache')
+            ->header('Expires', '0');
     }
 }

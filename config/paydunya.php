@@ -1,5 +1,8 @@
 <?php
 
+$appUrl = rtrim(env('APP_URL', 'http://localhost:8000'), '/');
+$publicUrl = rtrim(env('PAYDUNYA_PUBLIC_URL') ?: $appUrl, '/');
+
 return [
 
     /*
@@ -14,6 +17,7 @@ return [
     */
 
     'mode' => env('PAYDUNYA_MODE', 'test'),
+    'public_url' => $publicUrl,
 
     'master_key' => env('PAYDUNYA_MASTER_KEY', ''),
     'public_key' => env('PAYDUNYA_PUBLIC_KEY', ''),
@@ -25,16 +29,21 @@ return [
         'name' => env('PAYDUNYA_STORE_NAME', 'Campus Crush'),
         'tagline' => 'Rencontres universitaires au Sénégal',
         'phone' => env('PAYDUNYA_STORE_PHONE', ''),
-        'website' => env('APP_URL', 'http://localhost:8000'),
+        'website' => $publicUrl,
     ],
 
     // URLs de callback
-    'return_url' => env('APP_URL', 'http://localhost:8000') . '/subscription/success',
-    'cancel_url' => env('APP_URL', 'http://localhost:8000') . '/subscription/cancel',
-    'ipn_url' => env('APP_URL', 'http://localhost:8000') . '/webhook/paydunya',
+    'return_url' => $publicUrl . '/subscription/success',
+    'cancel_url' => $publicUrl . '/subscription/cancel',
+    'ipn_url' => $publicUrl . '/webhook/paydunya',
 
     // Montant abonnement mensuel (FCFA)
     'amount' => 1000,
+
+    // SoftPay doit ouvrir Wave/Orange Money directement. Activez ceci seulement
+    // si vous voulez accepter la page checkout PayDunya comme secours explicite.
+    'allow_checkout_fallback' => env('PAYDUNYA_ALLOW_CHECKOUT_FALLBACK', false),
+    'wave_enabled' => env('PAYDUNYA_WAVE_ENABLED', true),
 
     // API endpoints
     'base_url' => env('PAYDUNYA_MODE', 'test') === 'live'

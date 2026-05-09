@@ -23,8 +23,8 @@ return new class extends Migration
             $table->integer('amount')->default(1000); // en FCFA
             $table->string('payment_method')->nullable(); // orange_money, wave, free_money, etc.
             $table->string('transaction_id')->nullable();
-            $table->timestamp('starts_at');
-            $table->timestamp('ends_at');
+            $table->timestamp('starts_at')->nullable();
+            $table->timestamp('ends_at')->nullable();
             $table->timestamp('trial_ends_at')->nullable();
             $table->timestamps();
 

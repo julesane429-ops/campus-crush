@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -32,7 +33,7 @@ class PayDunyaService
      *
      * @return array [
      *   'success' => bool,
-     *   'method' => 'wave_redirect'|'om_redirect'|'free_ussd'|'fallback_redirect',
+     *   'method' => 'wave_redirect'|'om_redirect'|'free_ussd'|'fallback_redirect'|'*_softpay_failed',
      *   'url' => string|null (URL de redirection Wave/OM),
      *   'message' => string|null (message pour Free Money),
      *   'token' => string|null,
@@ -51,9 +52,27 @@ class PayDunyaService
         string $cancelUrl,
         string $type = 'subscription'
     ): array {
+        if (!$this->isPaymentMethodEnabled($paymentMethod)) {
+            return [
+                'success' => false,
+                'method' => $paymentMethod . '_disabled',
+                'url' => null,
+                'message' => null,
+                'token' => null,
+                'error' => $this->disabledPaymentMessage($paymentMethod),
+            ];
+        }
+
         // Étape 1 : Créer la facture
         $invoice = $this->createGenericInvoice(
-            $userId, $userName, $userEmail, $amount, $description, $returnUrl, $cancelUrl, $type
+            $userId,
+            $userName,
+            $userEmail,
+            $amount,
+            $description,
+            $returnUrl,
+            $cancelUrl,
+            $type
         );
 
         if (!$invoice['success']) {
@@ -82,19 +101,31 @@ class PayDunyaService
             return array_merge($softpayResult, ['token' => $token, 'error' => null]);
         }
 
-        // Fallback : redirection vers la page PayDunya classique
-        Log::warning('Softpay failed, fallback to redirect', [
+        Log::warning('Softpay failed', [
             'method' => $paymentMethod,
             'error' => $softpayResult['error'] ?? 'unknown',
+            'phone_prefix' => substr($phone, 0, 2),
+            'phone_length' => strlen($phone),
         ]);
 
+        if ((bool) config('paydunya.allow_checkout_fallback', false)) {
+            return [
+                'success' => true,
+                'method' => 'fallback_redirect',
+                'url' => $invoice['url'],
+                'message' => null,
+                'token' => $token,
+                'error' => null,
+            ];
+        }
+
         return [
-            'success' => true,
-            'method' => 'fallback_redirect',
-            'url' => $invoice['url'],
+            'success' => false,
+            'method' => $paymentMethod . '_softpay_failed',
+            'url' => null,
             'message' => null,
             'token' => $token,
-            'error' => null,
+            'error' => $softpayResult['error'] ?? 'SoftPay indisponible. Reessaie plus tard ou contacte le support.',
         ];
     }
 
@@ -105,8 +136,7 @@ class PayDunyaService
     private function softpayWave(string $token, string $name, string $email, string $phone): array
     {
         try {
-            $response = Http::withoutVerifying()
-                ->withHeaders($this->headers)
+            $response = $this->http()
                 ->post($this->baseUrl . '/softpay/wave-senegal', [
                     'wave_senegal_fullName' => $name,
                     'wave_senegal_email' => $email,
@@ -114,19 +144,24 @@ class PayDunyaService
                     'wave_senegal_payment_token' => $token,
                 ]);
 
-            $data = $response->json();
-            Log::info('Softpay Wave response', ['data' => $data]);
+            $data = $response->json() ?? [];
+            $this->logPayDunyaResponse('Softpay Wave response', $data ?? [], $response->status());
+            $url = $this->firstUrl($data, ['url', 'redirect_url', 'payment_url', 'launch_url', 'response_text']);
 
-            if ($response->successful() && ($data['success'] ?? false)) {
+            if ($response->successful() && ($data['success'] ?? false) && $url) {
                 return [
                     'success' => true,
                     'method' => 'wave_redirect',
-                    'url' => $data['url'], // https://pay.wave.com/...
+                    'url' => $url, // https://pay.wave.com/...
                     'message' => null,
                 ];
             }
 
-            return ['success' => false, 'error' => $data['message'] ?? 'Wave Softpay échoué'];
+            if ($response->successful() && ($data['success'] ?? false)) {
+                return ['success' => false, 'error' => 'Wave SoftPay n\'a pas renvoye de lien de paiement.'];
+            }
+
+            return ['success' => false, 'error' => $this->waveSoftpayError($data)];
 
         } catch (\Exception $e) {
             Log::error('Softpay Wave error', ['message' => $e->getMessage()]);
@@ -141,8 +176,7 @@ class PayDunyaService
     private function softpayOrangeMoney(string $token, string $name, string $email, string $phone): array
     {
         try {
-            $response = Http::withoutVerifying()
-                ->withHeaders($this->headers)
+            $response = $this->http()
                 ->post($this->baseUrl . '/softpay/new-orange-money-senegal', [
                     'customer_name' => $name,
                     'customer_email' => $email,
@@ -150,27 +184,32 @@ class PayDunyaService
                     'invoice_token' => $token,
                 ]);
 
-            $data = $response->json();
-            Log::info('Softpay Orange Money response', ['data' => $data]);
+            $data = $response->json() ?? [];
+            $this->logPayDunyaResponse('Softpay Orange Money response', $data ?? [], $response->status());
+            $omUrl    = data_get($data, 'other_url.om_url');
+            $maxitUrl = data_get($data, 'other_url.maxit_url');
+            $qrUrl    = $this->firstUrl($data, ['url', 'redirect_url', 'payment_url', 'launch_url', 'response_text']);
+            $url      = $omUrl ?? $maxitUrl ?? $qrUrl;
 
-            if ($response->successful() && ($data['success'] ?? false)) {
+            if ($response->successful() && ($data['success'] ?? false) && $url) {
                 // PayDunya retourne deux URLs HTTPS directes (pas de deep link) :
                 // om_url    = Firebase Dynamic Link → ouvre l'app Orange Money (iOS + Android)
                 // maxit_url = lien direct Sugu/Maxit → ouvre Maxit (iOS + Android)
-                $omUrl    = $data['other_url']['om_url']    ?? null;
-                $maxitUrl = $data['other_url']['maxit_url'] ?? null;
-
                 return [
                     'success'     => true,
                     'method'      => 'om_redirect',
-                    'url'         => $omUrl ?? $data['url'] ?? null, // Orange Money en priorité
+                    'url'         => $url,
                     'om_url'      => $omUrl,
                     'maxit_url'   => $maxitUrl,
                     'message'     => null,
                 ];
             }
 
-            return ['success' => false, 'error' => $data['message'] ?? 'Orange Money Softpay échoué'];
+            if ($response->successful() && ($data['success'] ?? false)) {
+                return ['success' => false, 'error' => 'Orange Money SoftPay n\'a pas renvoye de lien de paiement.'];
+            }
+
+            return ['success' => false, 'error' => $this->softpayError($data, 'Orange Money SoftPay echoue')];
 
         } catch (\Exception $e) {
             Log::error('Softpay Orange Money error', ['message' => $e->getMessage()]);
@@ -185,8 +224,7 @@ class PayDunyaService
     private function softpayFreeMoney(string $token, string $name, string $email, string $phone): array
     {
         try {
-            $response = Http::withoutVerifying()
-                ->withHeaders($this->headers)
+            $response = $this->http()
                 ->post($this->baseUrl . '/softpay/free-money-senegal', [
                     'customer_name' => $name,
                     'customer_email' => $email,
@@ -194,8 +232,8 @@ class PayDunyaService
                     'payment_token' => $token,
                 ]);
 
-            $data = $response->json();
-            Log::info('Softpay Free Money response', ['data' => $data]);
+            $data = $response->json() ?? [];
+            $this->logPayDunyaResponse('Softpay Free Money response', $data ?? [], $response->status());
 
             if ($response->successful() && ($data['success'] ?? false)) {
                 return [
@@ -206,7 +244,7 @@ class PayDunyaService
                 ];
             }
 
-            return ['success' => false, 'error' => $data['message'] ?? 'Free Money Softpay échoué'];
+            return ['success' => false, 'error' => $this->softpayError($data, 'Free Money SoftPay echoue')];
 
         } catch (\Exception $e) {
             Log::error('Softpay Free Money error', ['message' => $e->getMessage()]);
@@ -220,12 +258,25 @@ class PayDunyaService
 
     private function createGenericInvoice(
         int $userId, string $userName, string $userEmail,
-        int $amount, string $description, string $returnUrl, string $cancelUrl, string $type
+        int $amount,
+        string $description,
+        string $returnUrl,
+        string $cancelUrl,
+        string $type,
+        ?array $channels = null
     ): array {
         $payload = [
             'invoice' => [
                 'total_amount' => $amount,
                 'description' => $description,
+                'items' => [
+                    'item_0' => [
+                        'name' => $description,
+                        'quantity' => 1,
+                        'unit_price' => $amount,
+                        'total_price' => $amount,
+                    ],
+                ],
             ],
             'store' => [
                 'name' => config('paydunya.store.name'),
@@ -233,17 +284,9 @@ class PayDunyaService
                 'phone' => config('paydunya.store.phone'),
                 'website_url' => config('paydunya.store.website'),
             ],
-            'items' => [
-                'item_0' => [
-                    'name' => $description,
-                    'quantity' => 1,
-                    'unit_price' => $amount,
-                    'total_price' => $amount,
-                ],
-            ],
             'actions' => [
-                'return_url' => $returnUrl,
-                'cancel_url' => $cancelUrl,
+                'return_url' => $this->paydunyaActionUrl($returnUrl),
+                'cancel_url' => $this->paydunyaActionUrl($cancelUrl),
                 'callback_url' => config('paydunya.ipn_url'),
             ],
             'custom_data' => [
@@ -252,12 +295,12 @@ class PayDunyaService
                 'user_email' => $userEmail,
                 'type' => $type,
             ],
-            'channels' => [
-                'orange-money-senegal',
-                'wave-senegal',
-                'free-money-senegal',
-            ],
         ];
+
+        $invoiceChannels = $channels ?? $this->availableChannels();
+        if (count(array_filter($invoiceChannels)) > 0) {
+            $payload['channels'] = array_values(array_filter($invoiceChannels));
+        }
 
         return $this->sendInvoice($payload);
     }
@@ -299,11 +342,10 @@ class PayDunyaService
     public function checkPaymentStatus(string $token): array
     {
         try {
-            $response = Http::withoutVerifying()
-                ->withHeaders($this->headers)
+            $response = $this->http()
                 ->get($this->baseUrl . '/checkout-invoice/confirm/' . $token);
 
-            $data = $response->json();
+            $data = $response->json() ?? [];
 
             if ($response->successful() && isset($data['status'])) {
                 return [
@@ -327,15 +369,40 @@ class PayDunyaService
     // HELPERS
     // ══════════════════════════════════════════════════════════════
 
+    public function availablePaymentMethods(): array
+    {
+        $methods = ['orange_money'];
+
+        if ((bool) config('paydunya.wave_enabled', true)) {
+            $methods[] = 'wave';
+        }
+
+        $methods[] = 'free_money';
+
+        return $methods;
+    }
+
+    public function isPaymentMethodEnabled(string $paymentMethod): bool
+    {
+        return in_array($paymentMethod, $this->availablePaymentMethods(), true);
+    }
+
+    private function availableChannels(): array
+    {
+        return array_values(array_filter(array_map(
+            fn(string $method) => $this->channelForMethod($method),
+            $this->availablePaymentMethods()
+        )));
+    }
+
     private function sendInvoice(array $payload): array
     {
         try {
-            $response = Http::withoutVerifying()
-                ->withHeaders($this->headers)
+            $response = $this->http()
                 ->post($this->baseUrl . '/checkout-invoice/create', $payload);
 
-            $data = $response->json();
-            Log::info('PayDunya invoice response', ['data' => $data]);
+            $data = $response->json() ?? [];
+            $this->logPayDunyaResponse('PayDunya invoice response', $data ?? []);
 
             if ($response->successful() && isset($data['response_code']) && $data['response_code'] === '00') {
                 return [
@@ -355,7 +422,7 @@ class PayDunyaService
     }
 
     private function formatPhone(string $phone): string
-{
+    {
     // Retirer tout sauf les chiffres
     $phone = preg_replace('/[^0-9]/', '', $phone);
 
@@ -365,5 +432,109 @@ class PayDunyaService
     }
 
     return $phone; // Format local : 771234567
-}
+    }
+
+    private function http(): PendingRequest
+    {
+        $request = Http::acceptJson()
+            ->withOptions(['proxy' => ''])
+            ->withHeaders($this->headers)
+            ->timeout(20)
+            ->retry(2, 300);
+
+        if (app()->environment('local') && config('services.http.verify_ssl') === false) {
+            return $request->withoutVerifying();
+        }
+
+        return $request;
+    }
+
+    private function channelForMethod(string $paymentMethod): string
+    {
+        return match ($paymentMethod) {
+            'wave' => 'wave-senegal',
+            'orange_money' => 'orange-money-senegal',
+            'free_money' => 'free-money-senegal',
+            default => '',
+        };
+    }
+
+    private function paydunyaActionUrl(string $url): string
+    {
+        $publicUrl = rtrim((string) config('paydunya.public_url', ''), '/');
+        $appUrl = rtrim((string) config('app.url', ''), '/');
+
+        if ($publicUrl === '' || $publicUrl === $appUrl) {
+            return $url;
+        }
+
+        $path = parse_url($url, PHP_URL_PATH) ?: '';
+        $query = parse_url($url, PHP_URL_QUERY);
+        $fragment = parse_url($url, PHP_URL_FRAGMENT);
+
+        return $publicUrl
+            . $path
+            . ($query ? '?' . $query : '')
+            . ($fragment ? '#' . $fragment : '');
+    }
+
+    private function firstUrl(array $data, array $paths): ?string
+    {
+        foreach ($paths as $path) {
+            $value = data_get($data, $path);
+
+            if (is_string($value) && filter_var($value, FILTER_VALIDATE_URL)) {
+                return $value;
+            }
+        }
+
+        return null;
+    }
+
+    private function softpayError(array $data, string $fallback): string
+    {
+        foreach (['message', 'response_text', 'errors.message', 'errors.description'] as $path) {
+            $value = data_get($data, $path);
+
+            if (is_string($value) && trim($value) !== '') {
+                return $value;
+            }
+        }
+
+        return $fallback;
+    }
+
+    private function waveSoftpayError(array $data): string
+    {
+        $error = $this->softpayError($data, 'Wave SoftPay echoue');
+
+        if (str_contains(mb_strtolower($error), 'serveur')) {
+            return 'Wave est temporairement indisponible via PayDunya. Utilise Orange Money pour finaliser ton paiement.';
+        }
+
+        return $error;
+    }
+
+    private function disabledPaymentMessage(string $paymentMethod): string
+    {
+        return match ($paymentMethod) {
+            'wave' => 'Wave est temporairement indisponible via PayDunya. Utilise Orange Money pour finaliser ton paiement.',
+            default => 'Ce moyen de paiement est temporairement indisponible.',
+        };
+    }
+
+    private function logPayDunyaResponse(string $event, array $data, ?int $httpStatus = null): void
+    {
+        Log::info($event, [
+            'http_status' => $httpStatus,
+            'success' => $data['success'] ?? null,
+            'response_code' => $data['response_code'] ?? null,
+            'status' => $data['status'] ?? null,
+            'message' => $data['message'] ?? $data['response_text'] ?? null,
+            'token_present' => isset($data['token']),
+            'url_present' => is_string(data_get($data, 'url')) || is_string(data_get($data, 'response_text')),
+            'om_url_present' => is_string(data_get($data, 'other_url.om_url')),
+            'maxit_url_present' => is_string(data_get($data, 'other_url.maxit_url')),
+        ]);
+    }
 }

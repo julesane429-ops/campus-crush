@@ -26,6 +26,16 @@ class AiChatService
      */
     public function chat(AiChatSession $session, string $userMessage): string
     {
+        if ($this->fakeMode()) {
+            Log::info('AI chat fake mode enabled', ['bot_type' => $session->bot_type]);
+            return $this->fakeReply($session, $userMessage);
+        }
+
+        if (empty($this->apiKey)) {
+            Log::error('ANTHROPIC_API_KEY is not set. Add it to Render environment variables.');
+            return 'Le service IA n\'est pas configuré. Contacte le support Campus Crush. 🔧';
+        }
+
         $user    = $session->user;
         $profile = $user->profile;
 
@@ -51,11 +61,17 @@ class AiChatService
         $messages[] = ['role' => 'user', 'content' => $userMessage];
 
         try {
-            $response = Http::withHeaders([
+            $client = Http::withOptions(['proxy' => ''])->withHeaders([
                 'x-api-key'         => $this->apiKey,
                 'anthropic-version' => '2023-06-01',
                 'Content-Type'      => 'application/json',
-            ])->timeout(30)->post('https://api.anthropic.com/v1/messages', [
+            ])->timeout(30);
+
+            if (app()->environment('local') && config('services.http.verify_ssl') === false) {
+                $client = $client->withoutVerifying();
+            }
+
+            $response = $client->post('https://api.anthropic.com/v1/messages', [
                 'model'       => $this->model,
                 'system'      => $systemPrompt,   // <-- séparé des messages chez Claude
                 'messages'    => $messages,
@@ -69,6 +85,14 @@ class AiChatService
                 return $data['content'][0]['text'] ?? 'Désolé, je n\'ai pas compris. Réessaie 😊';
             }
 
+            if ($response->status() === 401) {
+                Log::error('Claude API authentication failed', ['status' => 401]);
+
+                if (app()->environment('local')) {
+                    return 'Mode IA reel non configure: la cle Anthropic locale est invalide. Active AI_CHAT_FAKE=true ou remplace ANTHROPIC_API_KEY.';
+                }
+            }
+
             Log::error('Claude API error', [
                 'status' => $response->status(),
                 'body'   => $response->body(),
@@ -79,6 +103,30 @@ class AiChatService
             Log::error('Claude exception', ['message' => $e->getMessage()]);
             return 'Connexion perdue. Vérifie ta connexion internet et réessaie 📱';
         }
+    }
+
+    private function fakeMode(): bool
+    {
+        return app()->environment('local')
+            && filter_var(config('services.claude.fake', false), FILTER_VALIDATE_BOOL);
+    }
+
+    private function fakeReply(AiChatSession $session, string $userMessage): string
+    {
+        $user = $session->user;
+        $profile = $user->profile;
+        $university = $profile?->university_name ?? 'ton campus';
+        $ufr = $profile?->ufr ? ' en ' . $profile->ufr : '';
+        $message = trim($userMessage);
+
+        return match ($session->bot_type) {
+            'support' => "Mode test local actif. Je peux repondre sans appeler Anthropic. Pour l'app: inscription, profil, swipe, IA et paiements SoftPay peuvent etre testes depuis ce serveur local.",
+            'coach' => "Ton profil a deja une base: {$university}{$ufr}. Pour avoir plus de matchs, ajoute une bio concrete, une photo nette ou tu souris, et 3 centres d'interet faciles a relancer.",
+            'match_girl' => "Waw, j'aime bien ton message. Tu etudies a {$university}, c'est comment l'ambiance la-bas ?",
+            'match_boy' => "Ah je vois. {$university}, c'est solide. Tu es plutot bibliotheque serieuse ou discussions apres les cours ?",
+            'flirt' => "Bonne ouverture. [Coach: garde le message simple, mais ajoute un detail du profil pour montrer que tu as vraiment lu.] Tu peux rebondir sur: \"{$message}\".",
+            default => 'Je suis en mode test local et je reponds sans API externe.',
+        };
     }
 
     /**

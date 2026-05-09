@@ -696,11 +696,12 @@ $otherPhoto = $otherProfile?->photo_url ?? 'https://ui-avatars.com/api/?backgrou
                 imgHtml += '</div>';
                 contentHtml += imgHtml;
             }
+            let optimisticDiv = null;
             if (contentHtml) {
-                const div = document.createElement('div');
-                div.className = 'flex items-end gap-2 max-w-[80%] ml-auto flex-row-reverse msg-in';
-                div.innerHTML = '<div class="flex flex-col items-end"><div class="bubble-sent px-3.5 py-2.5">' + contentHtml + '</div><span class="text-[9px] text-white/15 mt-1 px-1" style="font-family:monospace">' + time + '</span></div>';
-                chatArea.insertBefore(div, typingEl);
+                optimisticDiv = document.createElement('div');
+                optimisticDiv.className = 'flex items-end gap-2 max-w-[80%] ml-auto flex-row-reverse msg-in';
+                optimisticDiv.innerHTML = '<div class="flex flex-col items-end"><div class="bubble-sent px-3.5 py-2.5">' + contentHtml + '</div><span class="msg-status text-[9px] text-white/15 mt-1 px-1" style="font-family:monospace">' + time + ' …</span></div>';
+                chatArea.insertBefore(optimisticDiv, typingEl);
                 chatArea.scrollTop = chatArea.scrollHeight;
             }
             const fd = new FormData(this);
@@ -715,7 +716,19 @@ $otherPhoto = $otherProfile?->photo_url ?? 'https://ui-avatars.com/api/?backgrou
                     'Accept': 'application/json'
                 },
                 credentials: 'same-origin'
-            }).catch(err => console.error('Send error:', err));
+            }).then(r => {
+                if (optimisticDiv) {
+                    const s = optimisticDiv.querySelector('.msg-status');
+                    if (s) s.textContent = time;
+                }
+            }).catch(err => {
+                console.error('Send error:', err);
+                if (optimisticDiv) {
+                    const s = optimisticDiv.querySelector('.msg-status');
+                    if (s) { s.textContent = '⚠️ Erreur'; s.style.color = 'rgba(239,68,68,0.7)'; }
+                    optimisticDiv.style.opacity = '0.6';
+                }
+            });
             attachInput.value = '';
         });
 

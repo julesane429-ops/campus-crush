@@ -530,11 +530,21 @@
         {{-- ACTION BUTTONS --}}
         {{-- ═══════════════════════════════ --}}
         <div class="flex-shrink-0 px-6 pb-2 fade-up" style="animation-delay:0.15s">
-            <div class="flex items-center justify-center gap-5">
+            <div class="flex items-center justify-center gap-4">
                 {{-- Pass --}}
                 <button id="btn-pass" class="action-btn action-btn-pass">
                     <svg class="w-7 h-7 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+
+                {{-- Undo --}}
+                <button id="btn-undo" title="Annuler le dernier swipe"
+                    class="action-btn action-btn-filter transition-all duration-200"
+                    style="width:46px;height:46px;opacity:0.3;pointer-events:none;"
+                    disabled>
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5" style="color:#ffc145;">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
                     </svg>
                 </button>
 
@@ -794,6 +804,7 @@
         let activeCard = null;
         let tapStartTime = 0; // double-tap
         let lastTapTime = 0; // double-tap
+        let lastSwipedProfile = null; // undo support
 
         const cardStack = document.getElementById('card-stack');
         const emptyState = document.getElementById('empty-state');
@@ -1019,6 +1030,7 @@ ${profile.badge === 'queen'
             card.classList.add(direction === 'right' ? 'exit-right' : 'exit-left');
 
             // API call
+            let isMatch = false;
             if (direction === 'right') {
                 try {
                     const res = await fetch('/like/' + profile.id, {
@@ -1030,6 +1042,7 @@ ${profile.badge === 'queen'
                     });
                     const data = await res.json();
                     if (data.match) {
+                        isMatch = true;
                         currentMatchId = data.match_id;
 
                         // Remplir les infos du popup
@@ -1058,11 +1071,46 @@ ${profile.badge === 'queen'
                 }).catch(() => {});
             }
 
+            // Undo disponible seulement si pas de match
+            if (!isMatch) {
+                lastSwipedProfile = { ...profile, _direction: direction };
+                const btnUndo = document.getElementById('btn-undo');
+                if (btnUndo) { btnUndo.disabled = false; btnUndo.style.opacity = '1'; btnUndo.style.pointerEvents = 'auto'; }
+            } else {
+                lastSwipedProfile = null;
+                const btnUndo = document.getElementById('btn-undo');
+                if (btnUndo) { btnUndo.disabled = true; btnUndo.style.opacity = '0.3'; btnUndo.style.pointerEvents = 'none'; }
+            }
+
             // Next card after animation
             setTimeout(() => {
                 currentIndex++;
                 renderCards();
             }, 350);
+        }
+
+        // ═══════════════════════════════════════════
+        // UNDO — annule le dernier swipe
+        // ═══════════════════════════════════════════
+        async function undoSwipe() {
+            if (!lastSwipedProfile) return;
+            const p = lastSwipedProfile;
+            lastSwipedProfile = null;
+            const btnUndo = document.getElementById('btn-undo');
+            if (btnUndo) { btnUndo.disabled = true; btnUndo.style.opacity = '0.3'; btnUndo.style.pointerEvents = 'none'; }
+
+            try {
+                await fetch('/swipe/undo/' + p.id, {
+                    method: 'DELETE',
+                    headers: { 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' }
+                });
+            } catch (e) { console.error('Undo error:', e); }
+
+            // Remettre le profil en tête de pile
+            currentIndex = Math.max(0, currentIndex - 1);
+            profiles.splice(currentIndex, 0, p);
+            renderCards();
+            if (navigator.vibrate) navigator.vibrate(8);
         }
 
         // ═══════════════════════════════════════════
@@ -1083,6 +1131,8 @@ ${profile.badge === 'queen'
             }
             swipe('left');
         });
+
+        document.getElementById('btn-undo').addEventListener('click', undoSwipe);
 
         // ═══════════════════════════════════════════
         // MATCH POPUP

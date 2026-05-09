@@ -106,6 +106,10 @@ class AiChatController extends Controller
             'phone_number' => ['required', 'string', 'regex:/^(77|78|76|70|75)[0-9]{7}$/'],
         ]);
 
+        if (!$this->paydunya->isPaymentMethodEnabled($request->payment_method)) {
+            return back()->withInput()->with('error', 'Wave est temporairement indisponible via PayDunya. Utilise Orange Money pour finaliser ton paiement.');
+        }
+
         $user = Auth::user();
         if ($user->ai_chat_unlocked) return redirect()->route('ai.index');
 

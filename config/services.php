@@ -39,6 +39,11 @@ return [
     'claude' => [
         'key'   => env('ANTHROPIC_API_KEY'),
         'model' => env('CLAUDE_MODEL', 'claude-haiku-4-5-20251001'),
+        'fake'  => env('AI_CHAT_FAKE', false),
+    ],
+
+    'http' => [
+        'verify_ssl' => env('HTTP_CLIENT_VERIFY_SSL', true),
     ],
 
 ];

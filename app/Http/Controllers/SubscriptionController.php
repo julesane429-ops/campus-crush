@@ -7,6 +7,7 @@ use App\Models\Payment;
 use App\Services\PayDunyaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
@@ -32,6 +33,10 @@ class SubscriptionController extends Controller
             'payment_method' => 'required|in:orange_money,wave,free_money',
             'phone_number' => ['required', 'string', 'regex:/^(77|78|76|70|75)[0-9]{7}$/'],
         ]);
+
+        if (!$this->paydunya->isPaymentMethodEnabled($request->payment_method)) {
+            return back()->withInput()->with('error', 'Wave est temporairement indisponible via PayDunya. Utilise Orange Money pour finaliser ton paiement.');
+        }
 
         $user = Auth::user();
         $subscription = $user->getOrCreateSubscription();
@@ -134,6 +139,11 @@ class SubscriptionController extends Controller
 
     public function webhook(Request $request)
     {
+        return $this->verifiedWebhook($request);
+    }
+
+    /*
+
         $data = $request->all();
         Log::info('PayDunya IPN received', $data);
 
@@ -169,5 +179,115 @@ class SubscriptionController extends Controller
         }
 
         return response()->json(['status' => 'ok']);
+    }
+
+    */
+
+    private function verifiedWebhook(Request $request)
+    {
+        $data = $request->all();
+
+        $invoiceToken = $data['data']['invoice']['token']
+            ?? $data['invoice']['token']
+            ?? $data['token']
+            ?? null;
+        $payloadUserId = $data['data']['custom_data']['user_id']
+            ?? $data['custom_data']['user_id']
+            ?? null;
+        $payloadStatus = $data['data']['status'] ?? $data['status'] ?? null;
+
+        Log::info('PayDunya IPN received', [
+            'invoice_token' => $invoiceToken ? Str::mask($invoiceToken, '*', 6, -4) : null,
+            'payload_status' => $payloadStatus,
+            'payload_user_id' => $payloadUserId,
+        ]);
+
+        if (!$invoiceToken || !$payloadUserId) {
+            return response()->json(['status' => 'error', 'message' => 'Invalid IPN payload.'], 400);
+        }
+
+        $payment = Payment::where('transaction_id', $invoiceToken)
+            ->where('user_id', $payloadUserId)
+            ->first();
+
+        if (!$payment) {
+            Log::warning('PayDunya IPN ignored: payment not found', [
+                'invoice_token' => Str::mask($invoiceToken, '*', 6, -4),
+                'payload_user_id' => $payloadUserId,
+            ]);
+            return response()->json(['status' => 'ignored'], 404);
+        }
+
+        if ($payment->status === 'completed') {
+            return response()->json(['status' => 'ok']);
+        }
+
+        $verified = $this->paydunya->checkPaymentStatus($invoiceToken);
+
+        if (!$verified['success']) {
+            Log::warning('PayDunya IPN verification failed', [
+                'invoice_token' => Str::mask($invoiceToken, '*', 6, -4),
+                'error' => $verified['error'] ?? null,
+            ]);
+            return response()->json(['status' => 'verification_failed'], 422);
+        }
+
+        $verifiedUserId = (int) ($verified['custom_data']['user_id'] ?? $payloadUserId);
+        $paymentType = $verified['custom_data']['type']
+            ?? $data['data']['custom_data']['type']
+            ?? 'subscription';
+
+        if ($verifiedUserId !== (int) $payment->user_id) {
+            Log::warning('PayDunya IPN user mismatch', [
+                'payment_id' => $payment->id,
+                'verified_user_id' => $verifiedUserId,
+            ]);
+            return response()->json(['status' => 'mismatch'], 409);
+        }
+
+        if (($verified['status'] ?? null) !== 'completed') {
+            if (in_array($verified['status'] ?? null, ['failed', 'cancelled', 'canceled'], true)) {
+                $payment->update(['status' => 'failed', 'notes' => 'PayDunya status: ' . $verified['status']]);
+            }
+            return response()->json(['status' => 'pending']);
+        }
+
+        DB::transaction(function () use ($payment, $paymentType, $verified, $invoiceToken): void {
+            $this->activatePaidFeature($payment->fresh(), $paymentType, $verified['transaction_id'] ?? $invoiceToken);
+        });
+
+        return response()->json(['status' => 'ok']);
+    }
+
+    private function activatePaidFeature(Payment $payment, string $paymentType, ?string $transactionId): void
+    {
+        if ($payment->status === 'completed') {
+            return;
+        }
+
+        $payment->update([
+            'status' => 'completed',
+            'notes' => trim(($payment->notes ? $payment->notes . "\n" : '') . 'Confirmed by verified PayDunya IPN'),
+        ]);
+
+        if ($paymentType === 'ai_chat') {
+            \App\Models\User::where('id', $payment->user_id)->update([
+                'ai_chat_unlocked' => true,
+                'ai_chat_unlocked_at' => now(),
+            ]);
+            return;
+        }
+
+        if ($paymentType === 'boost') {
+            $profile = \App\Models\Profile::where('user_id', $payment->user_id)->first();
+            if ($profile) {
+                $from = ($profile->boosted_until && $profile->boosted_until->isFuture()) ? $profile->boosted_until : now();
+                $profile->update(['boosted_until' => $from->addHours(24)]);
+            }
+            return;
+        }
+
+        $subscription = Subscription::where('user_id', $payment->user_id)->latest()->first();
+        $subscription?->activate($payment->payment_method, $transactionId);
     }
 }

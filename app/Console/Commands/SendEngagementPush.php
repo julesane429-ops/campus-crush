@@ -3,7 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\User;
-use App\Services\WebPushService;
+use App\Services\ExpoPushService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
 
@@ -39,7 +39,7 @@ class SendEngagementPush extends Command
 
     public function handle()
     {
-        $webPush = app(WebPushService::class);
+        $expoPush = app(ExpoPushService::class);
         $isSaturday = now()->isSaturday();
         $sent = 0;
 
@@ -54,22 +54,19 @@ class SendEngagementPush extends Command
             $cacheKey = "engage_daily_{$user->id}_" . today()->toDateString();
             if (Cache::has($cacheKey)) continue;
 
-            // Choisir un message aléatoire
             if ($isSaturday) {
                 $msg = $this->weekendMessages[array_rand($this->weekendMessages)];
             } else {
-                // Exclure le message IA pour les utilisateurs qui ont déjà débloqué
                 $pool = $user->ai_chat_unlocked
                     ? array_filter($this->dailyMessages, fn($m) => !str_contains($m['title'], 'IA'))
                     : $this->dailyMessages;
                 $msg = array_values($pool)[array_rand($pool)];
             }
 
-            // Personnaliser si possible
             $body = $this->personalize($user, $msg['body']);
 
             try {
-                $webPush->sendToUser($user, $msg['title'], $body, '/swipe');
+                $expoPush->send($user, $msg['title'], $body);
                 Cache::put($cacheKey, true, now()->endOfDay());
                 $sent++;
             } catch (\Exception $e) {
@@ -85,7 +82,6 @@ class SendEngagementPush extends Command
         $reengaged = 0;
 
         foreach ($this->reengagementMessages as $days => $msg) {
-            // Utilisateurs inactifs depuis exactement X jours (±12h)
             $inactiveUsers = User::whereHas('profile', function ($q) use ($days) {
                 $q->whereBetween('last_seen_at', [
                     now()->subDays($days)->subHours(12),
@@ -97,7 +93,6 @@ class SendEngagementPush extends Command
                 $cacheKey = "engage_reactivate_{$user->id}_{$days}d";
                 if (Cache::has($cacheKey)) continue;
 
-                // Ajouter le nombre de likes reçus pendant l'absence
                 $newLikes = \App\Models\Like::where('liked_user_id', $user->id)
                     ->where('created_at', '>=', now()->subDays($days))
                     ->count();
@@ -108,8 +103,7 @@ class SendEngagementPush extends Command
                 }
 
                 try {
-                    $webPush->sendToUser($user, $msg['title'], $body, '/swipe');
-                    // Cooldown : ne pas renvoyer ce palier pendant 7 jours
+                    $expoPush->send($user, $msg['title'], $body);
                     Cache::put($cacheKey, true, now()->addDays(7));
                     $reengaged++;
                 } catch (\Exception $e) {
@@ -135,7 +129,7 @@ class SendEngagementPush extends Command
                 if (Cache::has($cacheKey)) continue;
 
                 try {
-                    $webPush->sendToUser($user, $eveningMsg['title'], $eveningMsg['body'], '/swipe');
+                    $expoPush->send($user, $eveningMsg['title'], $eveningMsg['body']);
                     Cache::put($cacheKey, true, now()->endOfDay());
                     $satEvening++;
                 } catch (\Exception $e) {
@@ -149,12 +143,8 @@ class SendEngagementPush extends Command
         return Command::SUCCESS;
     }
 
-    /**
-     * Personnaliser le message avec des données de l'utilisateur.
-     */
     private function personalize(User $user, string $body): string
     {
-        // Ajouter le nombre de likes non vus
         $unseenLikes = \App\Models\Like::where('liked_user_id', $user->id)
             ->whereNotIn('user_id', function ($q) use ($user) {
                 $q->select('user1_id')->from('matches')->where('user2_id', $user->id)

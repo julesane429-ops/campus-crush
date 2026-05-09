@@ -200,6 +200,19 @@ class SwipeController extends Controller
     }
 
     // ────────────────────────────────────────────────────────────────────
+    // UNDO — annule le dernier like ou pass sur un profil
+    // ────────────────────────────────────────────────────────────────────
+    public function undo(int $id)
+    {
+        $user = Auth::user();
+        Like::where('user_id', $user->id)->where('liked_user_id', $id)->delete();
+        Pass::where('user_id', $user->id)->where('passed_user_id', $id)->delete();
+        $this->invalidateUserCaches($user->id);
+        $this->invalidateUserCaches($id);
+        return response()->json(['undone' => true]);
+    }
+
+    // ────────────────────────────────────────────────────────────────────
     // NAV COUNTS — mis en cache 60 s, évite 3 requêtes / page
     // ────────────────────────────────────────────────────────────────────
     public function navCounts()

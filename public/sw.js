@@ -4,8 +4,8 @@
 //   • Pages HTML, JS, CSS                     → Network-First avec fallback
 //   • API / temps réel / broadcast            → Network-Only (jamais en cache)
 
-const CACHE_STATIC  = 'cc-static-v3';
-const CACHE_PAGES   = 'cc-pages-v3';
+const CACHE_STATIC  = 'cc-static-v4';
+const CACHE_PAGES   = 'cc-pages-v4';
 const OFFLINE_URL   = '/offline.html';
 
 // Ressources critiques à pré-cacher lors de l'installation
@@ -45,7 +45,7 @@ const NEVER_CACHE = [
 
 // Extensions "assets statiques"
 const STATIC_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.svg',
-                            '.woff', '.woff2', '.ttf', '.ico'];
+                            '.woff', '.woff2', '.ttf', '.ico', '.css', '.js'];
 
 // ── INSTALL ──────────────────────────────────────────────────────────────────
 self.addEventListener('install', event => {
@@ -133,7 +133,7 @@ async function networkFirstStrategy(request) {
     try {
         const response = await fetch(request, { signal: AbortSignal.timeout(8000) });
 
-        if (response.ok && response.type === 'basic') {
+        if (shouldCache(request, response)) {
             // Stocker en cache (avec timestamp)
             const toCache = response.clone();
             const headers = new Headers(toCache.headers);
@@ -166,7 +166,7 @@ async function networkFirstStrategy(request) {
 async function fetchAndCache(request, cacheName) {
     const response = await fetch(request);
 
-    if (response.ok && (response.type === 'basic' || response.type === 'cors')) {
+    if (shouldCache(request, response, true)) {
         const cache   = await caches.open(cacheName);
         const headers = new Headers(response.headers);
         headers.append('sw-cached-at', Date.now().toString());
@@ -178,6 +178,19 @@ async function fetchAndCache(request, cacheName) {
     }
 
     return response;
+}
+
+function shouldCache(request, response, allowCors = false) {
+    if (!response.ok) return false;
+    if (response.type !== 'basic' && (!allowCors || response.type !== 'cors')) return false;
+
+    const cacheControl = response.headers.get('cache-control') || '';
+    if (/no-store|no-cache|private/i.test(cacheControl)) return false;
+
+    const accept = request.headers.get('accept') || '';
+    if (accept.includes('text/html')) return false;
+
+    return true;
 }
 
 // ── PUSH NOTIFICATIONS ────────────────────────────────────────────────────────

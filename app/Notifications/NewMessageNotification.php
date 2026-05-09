@@ -2,6 +2,7 @@
 
 namespace App\Notifications;
 
+use App\Channels\ExpoPushChannel;
 use App\Models\Message;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -17,7 +18,7 @@ class NewMessageNotification extends Notification implements ShouldQueue
 
     public function via(object $notifiable): array
     {
-        return ['database'];
+        return ['database', ExpoPushChannel::class];
     }
 
     public function toArray(object $notifiable): array
@@ -34,6 +35,18 @@ class NewMessageNotification extends Notification implements ShouldQueue
             'sender_photo' => $sender->profile?->photo_url,
             'preview' => $preview,
             'message' => $sender->name . ': ' . $preview,
+        ];
+    }
+
+    public function toExpoPush(object $notifiable): array
+    {
+        $sender = $this->message->sender;
+        $preview = mb_substr($this->message->message ?? '📷 Photo', 0, 50);
+
+        return [
+            "💬 {$sender->name}",
+            $preview,
+            ['type' => 'new_message', 'match_id' => $this->message->match_id],
         ];
     }
 }

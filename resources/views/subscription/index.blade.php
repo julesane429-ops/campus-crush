@@ -103,15 +103,17 @@
             @csrf
 
             {{-- Payment Method --}}
+            @php $waveEnabled = (bool) config('paydunya.wave_enabled', true); @endphp
             <p class="text-xs text-white/30 uppercase tracking-wider mb-3">Moyen de paiement</p>
-            <div class="grid grid-cols-3 gap-3 mb-5">
+            <div class="grid {{ $waveEnabled ? 'grid-cols-3' : 'grid-cols-2' }} gap-3 mb-3">
                 <label class="cursor-pointer">
-                    <input type="radio" name="payment_method" value="orange_money" class="hidden peer" required>
+                    <input type="radio" name="payment_method" value="orange_money" class="hidden peer" required checked>
                     <div class="peer-checked:border-[#ff5e6c] peer-checked:bg-[#ff5e6c]/5 border border-white/10 rounded-2xl p-4 text-center transition hover:bg-white/5">
                         <span class="text-2xl block mb-1">🟠</span>
                         <span class="text-[10px] text-white/50">Orange Money</span>
                     </div>
                 </label>
+                @if($waveEnabled)
                 <label class="cursor-pointer">
                     <input type="radio" name="payment_method" value="wave" class="hidden peer">
                     <div class="peer-checked:border-[#ff5e6c] peer-checked:bg-[#ff5e6c]/5 border border-white/10 rounded-2xl p-4 text-center transition hover:bg-white/5">
@@ -119,6 +121,7 @@
                         <span class="text-[10px] text-white/50">Wave</span>
                     </div>
                 </label>
+                @endif
                 <label class="cursor-pointer">
                     <input type="radio" name="payment_method" value="free_money" class="hidden peer">
                     <div class="peer-checked:border-[#ff5e6c] peer-checked:bg-[#ff5e6c]/5 border border-white/10 rounded-2xl p-4 text-center transition hover:bg-white/5">
@@ -127,6 +130,9 @@
                     </div>
                 </label>
             </div>
+            @unless($waveEnabled)
+            <p class="text-[11px] text-yellow-300/70 mb-4">Wave est temporairement indisponible via PayDunya. Orange Money fonctionne.</p>
+            @endunless
 
             {{-- Phone --}}
             <p class="text-xs text-white/30 uppercase tracking-wider mb-2">Numéro de téléphone</p>
@@ -144,7 +150,7 @@
                 <div class="space-y-2.5">
                     <div class="flex items-start gap-2.5">
                         <span class="w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center text-[10px] font-bold" style="background:rgba(59,130,246,0.15); color:#60a5fa;">1</span>
-                        <p class="text-[11px] text-white/45 leading-relaxed">Choisis Orange Money, Wave ou Free Money ci-dessus et entre ton numéro</p>
+                        <p class="text-[11px] text-white/45 leading-relaxed">Choisis un moyen disponible ci-dessus et entre ton numéro</p>
                     </div>
                     <div class="flex items-start gap-2.5">
                         <span class="w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center text-[10px] font-bold" style="background:rgba(59,130,246,0.15); color:#60a5fa;">2</span>
