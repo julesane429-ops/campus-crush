@@ -12,6 +12,7 @@ use App\Notifications\NewMessageNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
+use App\Services\ImageCompressor;
 use App\Services\WebPushService;
 use Illuminate\Support\Str;
 
@@ -139,10 +140,11 @@ class MessageController extends Controller
         ]);
 
         if ($request->hasFile('attachment')) {
+            $disk = config('filesystems.default') === 's3' ? 's3' : 'public';
             foreach ($request->file('attachment') as $file) {
                 Attachment::create([
                     'message_id' => $message->id,
-                    'file_path'  => $file->store('attachments', config('filesystems.default') === 's3' ? 's3' : 'public'),
+                    'file_path'  => app(ImageCompressor::class)->storeAttachment($file, $disk),
                     'file_type'  => $file->getMimeType(),
                 ]);
             }

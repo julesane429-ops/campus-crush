@@ -66,7 +66,7 @@
 
                     {{-- Preview --}}
                     <img id="photo-preview-img" src="" alt=""
-                         class="hidden absolute inset-0 w-full h-full object-cover">
+                         class="hidden absolute inset-0 w-full h-full object-cover" decoding="async">
                     <div class="absolute inset-0 hidden" id="photo-overlay"
                          style="background: rgba(0,0,0,0.35); backdrop-filter: blur(2px);">
                     </div>
@@ -81,7 +81,7 @@
                         </div>
                         <div class="text-center">
                             <p class="text-sm font-semibold text-white/70">Appuie pour choisir une photo</p>
-                            <p class="text-xs text-white/25 mt-1">JPG, PNG · Max 5 Mo</p>
+                            <p class="text-xs text-white/25 mt-1">JPG, PNG, WebP · max 10 Mo</p>
                         </div>
                     </div>
 
@@ -270,6 +270,8 @@
 </div>
 </div>
 
+@include('components.client-image-compressor')
+
 @push('scripts')
 <script>
 // ═══════════════════════════════════════════
@@ -429,7 +431,7 @@ document.getElementById('bio').addEventListener('input', e => {
 // ═══════════════════════════════════════════
 // SUBMIT
 // ═══════════════════════════════════════════
-document.getElementById('profile-form').addEventListener('submit', function(e) {
+document.getElementById('profile-form').addEventListener('submit', async function(e) {
     e.preventDefault();
     if (!document.getElementById('level').value) {
         alert('Choisis ton niveau scolaire.');
@@ -437,6 +439,16 @@ document.getElementById('profile-form').addEventListener('submit', function(e) {
     }
     document.getElementById('save-text').classList.add('hidden');
     document.getElementById('save-loading').classList.remove('hidden');
+
+    const photoInput = document.getElementById('photo');
+    if (window.CampusCrushImageTools && photoInput.files.length) {
+        await window.CampusCrushImageTools.compressInputFiles(photoInput, {
+            maxSide: 900,
+            quality: 0.76,
+            maxFiles: 1,
+            namePrefix: 'profile-photo',
+        });
+    }
 
     fetch(this.action, {
         method: 'POST',

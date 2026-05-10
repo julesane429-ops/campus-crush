@@ -412,7 +412,7 @@
         {{-- ═══════════════════════════════ --}}
         <header class="flex items-center justify-between px-4 pt-3 pb-2 flex-shrink-0 fade-up" style="padding-top: max(env(safe-area-inset-top, 12px), 12px);">
             <a href="{{ route('profile.show') }}" class="relative w-9 h-9 rounded-full overflow-hidden border-2 border-white/10 flex-shrink-0">
-                <img src="{{ $user->profile->photo_url }}" class="w-full h-full object-cover" alt="">
+                <img src="{{ $user->profile->photo_url }}" class="w-full h-full object-cover" alt="{{ e($user->name) }}" width="36" height="36" loading="eager" decoding="async">
                 @if(($user->streak_days ?? 0) >= 3)
                 <span class="absolute -bottom-0.5 -right-0.5 text-[10px] leading-none">{{ $user->streak_badge }}</span>
                 @endif
@@ -587,7 +587,7 @@
                     style="left: 50%; margin-left: -90px; transform: rotate(-4deg);
                         box-shadow: -8px 8px 30px rgba(0,0,0,0.5), 0 0 0 3px rgba(255,94,108,0.4);">
                     <img src="{{ auth()->user()->profile->photo_url }}"
-                        class="w-full h-full object-cover" alt="Moi">
+                        class="w-full h-full object-cover" alt="Moi" width="112" height="112" loading="eager" decoding="async">
                 </div>
 
                 {{-- Cœur central --}}
@@ -604,7 +604,7 @@
                 <div class="match-photo-right absolute w-28 h-28 rounded-3xl overflow-hidden"
                     style="left: 50%; margin-left: 18px; transform: rotate(4deg);
                         box-shadow: 8px 8px 30px rgba(0,0,0,0.5), 0 0 0 3px rgba(255,193,69,0.4);">
-                    <img id="match-photo" src="" class="w-full h-full object-cover" alt="Match">
+                    <img id="match-photo" src="" class="w-full h-full object-cover" alt="Match" width="112" height="112" loading="eager" decoding="async">
                 </div>
             </div>
 
@@ -805,6 +805,8 @@
         let tapStartTime = 0; // double-tap
         let lastTapTime = 0; // double-tap
         let lastSwipedProfile = null; // undo support
+        let isLoadingProfiles = false;
+        const prefetchedPhotos = new Set();
 
         const cardStack = document.getElementById('card-stack');
         const emptyState = document.getElementById('empty-state');
@@ -824,6 +826,7 @@
 
             if (currentIndex >= profiles.length) {
                 emptyState.classList.remove('hidden');
+                maybeLoadAhead();
                 return;
             }
             emptyState.classList.add('hidden');
@@ -841,6 +844,8 @@
             // Attach drag to top card
             activeCard = cardStack.lastElementChild;
             if (activeCard) attachDrag(activeCard);
+            prefetchUpcomingPhotos(currentIndex);
+            maybeLoadAhead();
         }
 
         function createCardElement(profile, stackPos) {
@@ -853,7 +858,7 @@
             ).join('');
 
             card.innerHTML = `
-            <img src="${profile.photo}" alt="" class="absolute inset-0 w-full h-full object-cover" loading="lazy" onerror="this.src='https://ui-avatars.com/api/?background=1a1145&color=ff5e6c&bold=true&name=${encodeURIComponent(profile.name)}'">
+            <img src="${profile.photo}" alt="" class="absolute inset-0 w-full h-full object-cover" loading="${stackPos === 0 ? 'eager' : 'lazy'}" decoding="async" fetchpriority="${stackPos === 0 ? 'high' : 'low'}" onerror="this.src='https://ui-avatars.com/api/?background=1a1145&color=ff5e6c&bold=true&name=${encodeURIComponent(profile.name)}'">
             <div class="card-gradient absolute inset-0"></div>
 
             <div class="stamp stamp-like rounded-xl px-5 py-2 font-extrabold text-2xl tracking-widest" style="transform-origin:center; left:30%; top:40%;">LIKE</div>
@@ -1214,14 +1219,43 @@ ${profile.badge === 'queen'
         }
 
         async function loadMoreProfiles() {
+            if (isLoadingProfiles) return;
+            isLoadingProfiles = true;
             try {
                 const params = new URLSearchParams(filters);
                 const res = await fetch('/load-profiles?' + params);
                 const data = await res.json();
-                if (data.length > 0) profiles.push(...data);
+                if (data.length > 0) {
+                    const seen = new Set(profiles.map((p) => p.id));
+                    const fresh = data.filter((p) => !seen.has(p.id));
+                    profiles.push(...fresh);
+                    prefetchUpcomingPhotos(currentIndex);
+                }
             } catch (e) {
                 console.error('Load error:', e);
+            } finally {
+                isLoadingProfiles = false;
             }
+        }
+
+        function maybeLoadAhead() {
+            if (isLoadingProfiles) return;
+            const remaining = profiles.length - currentIndex;
+            if (remaining > 3) return;
+            loadMoreProfiles().then(() => {
+                if (currentIndex < profiles.length && cardStack.children.length === 0) renderCards();
+            });
+        }
+
+        function prefetchUpcomingPhotos(startIndex = currentIndex) {
+            profiles.slice(startIndex, startIndex + 6).forEach((profile) => {
+                if (!profile.photo || prefetchedPhotos.has(profile.photo)) return;
+                prefetchedPhotos.add(profile.photo);
+                const img = new Image();
+                img.decoding = 'async';
+                img.loading = 'eager';
+                img.src = profile.photo;
+            });
         }
 
         // ═══════════════════════════════════════════

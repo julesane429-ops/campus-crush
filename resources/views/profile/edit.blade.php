@@ -16,7 +16,7 @@
             <p class="text-white/30 mt-1 text-sm">Gardez votre profil à jour ✨</p>
         </div>
 
-        <form method="POST" action="{{ route('profile.update') }}" enctype="multipart/form-data" class="space-y-5">
+        <form method="POST" action="{{ route('profile.update') }}" enctype="multipart/form-data" class="space-y-5" id="profile-edit-form">
             @csrf @method('PATCH')
 
             {{-- Nom --}}
@@ -30,7 +30,7 @@
                 <label class="text-xs text-white/40 uppercase tracking-wider mb-2 block">Photo</label>
                 <input type="file" name="photo" id="photo" accept="image/*" class="cc-input text-sm file:mr-3 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-xs file:bg-[#ff5e6c]/20 file:text-[#ff5e6c]">
                 <div id="photo-preview" class="flex gap-3 mt-3">
-                    <img src="{{ $profile->photo_url }}" class="w-20 h-20 rounded-xl object-cover">
+                    <img src="{{ $profile->photo_url }}" class="w-20 h-20 rounded-xl object-cover" alt="{{ e(auth()->user()->name) }}" width="80" height="80" loading="eager" decoding="async">
                 </div>
             </div>
 
@@ -126,15 +126,37 @@
 </div>
 </div>
 
+@include('components.client-image-compressor')
+
 @push('scripts')
 <script>
 document.getElementById('photo').addEventListener('change', e => {
     const p = document.getElementById('photo-preview'); p.innerHTML='';
     const f = e.target.files[0]; if(!f) return;
     const r = new FileReader();
-    r.onload = ev => { const img = document.createElement('img'); img.src=ev.target.result; img.className='w-20 h-20 rounded-xl object-cover'; p.appendChild(img); };
+    r.onload = ev => { const img = document.createElement('img'); img.src=ev.target.result; img.className='w-20 h-20 rounded-xl object-cover'; img.width=80; img.height=80; img.decoding='async'; p.appendChild(img); };
     r.readAsDataURL(f);
 });
+
+let profileEditSubmitting = false;
+document.getElementById('profile-edit-form').addEventListener('submit', async function(e) {
+    if (profileEditSubmitting) return;
+    e.preventDefault();
+
+    const photoInput = document.getElementById('photo');
+    if (window.CampusCrushImageTools && photoInput.files.length) {
+        await window.CampusCrushImageTools.compressInputFiles(photoInput, {
+            maxSide: 900,
+            quality: 0.76,
+            maxFiles: 1,
+            namePrefix: 'profile-photo',
+        });
+    }
+
+    profileEditSubmitting = true;
+    this.submit();
+});
+
 document.querySelectorAll('.level-btn').forEach(b => b.addEventListener('click', () => {
     document.querySelectorAll('.level-btn').forEach(x => x.classList.remove('active'));
     b.classList.add('active'); document.getElementById('level').value = b.dataset.level;

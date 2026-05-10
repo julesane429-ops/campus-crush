@@ -1,27 +1,32 @@
-// ── Campus Crush Service Worker v3 ────────────────────────────────────────
-// Stratégie par type de ressource :
-//   • Assets statiques (images, fonts, icons) → Cache-First (7 jours)
-//   • Pages HTML, JS, CSS                     → Network-First avec fallback
-//   • API / temps réel / broadcast            → Network-Only (jamais en cache)
+// Campus Crush Service Worker
+// - Images: cache-first, 30 days, bounded cache
+// - Static assets: cache-first, 7 days
+// - HTML pages: network-first, offline fallback
+// - API/auth/realtime/payment routes: never cached
 
-const CACHE_STATIC  = 'cc-static-v4';
-const CACHE_PAGES   = 'cc-pages-v4';
-const OFFLINE_URL   = '/offline.html';
+const CACHE_STATIC = 'cc-static-v5';
+const CACHE_PAGES = 'cc-pages-v5';
+const CACHE_IMAGES = 'cc-images-v1';
+const OFFLINE_URL = '/offline.html';
 
-// Ressources critiques à pré-cacher lors de l'installation
 const PRECACHE_ASSETS = [
     '/offline.html',
     '/images/icons/icon-192x192.png',
     '/images/icons/icon-512x512.png',
 ];
 
-// TTL en secondes pour chaque type de cache
 const TTL = {
-    static: 7 * 24 * 3600,   // 7 jours (images, fonts, avatars)
-    pages:  5 * 60,           // 5 minutes (HTML rendu côté serveur)
+    images: 30 * 24 * 3600,
+    static: 7 * 24 * 3600,
+    pages: 5 * 60,
 };
 
-// Routes à ne JAMAIS mettre en cache (temps-réel, auth, mutations)
+const MAX_ENTRIES = {
+    images: 180,
+    static: 120,
+    pages: 30,
+};
+
 const NEVER_CACHE = [
     '/api/',
     '/broadcasting/',
@@ -30,7 +35,7 @@ const NEVER_CACHE = [
     '/notifications',
     '/like/',
     '/pass/',
-    '/messages/',      // POST — jamais GET sera déjà exclu par method check
+    '/messages/',
     '/typing/',
     '/logout',
     '/login',
@@ -43,11 +48,9 @@ const NEVER_CACHE = [
     '/crush/send',
 ];
 
-// Extensions "assets statiques"
-const STATIC_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.svg',
-                            '.woff', '.woff2', '.ttf', '.ico', '.css', '.js'];
+const IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp', '.gif'];
+const STATIC_EXTENSIONS = ['.svg', '.woff', '.woff2', '.ttf', '.ico', '.css', '.js'];
 
-// ── INSTALL ──────────────────────────────────────────────────────────────────
 self.addEventListener('install', event => {
     event.waitUntil(
         caches.open(CACHE_STATIC)
@@ -56,103 +59,78 @@ self.addEventListener('install', event => {
     );
 });
 
-// ── ACTIVATE (nettoyage des anciens caches) ───────────────────────────────────
 self.addEventListener('activate', event => {
     event.waitUntil(
         caches.keys().then(names =>
             Promise.all(
                 names
-                    .filter(n => n !== CACHE_STATIC && n !== CACHE_PAGES)
-                    .map(n => caches.delete(n))
+                    .filter(name => ![CACHE_STATIC, CACHE_PAGES, CACHE_IMAGES].includes(name))
+                    .map(name => caches.delete(name))
             )
         ).then(() => self.clients.claim())
     );
 });
 
-// ── FETCH ─────────────────────────────────────────────────────────────────────
 self.addEventListener('fetch', event => {
     const { request } = event;
-    const url = new URL(request.url);
 
-    // 1. Ignorer les méthodes non-GET
     if (request.method !== 'GET') return;
-
-    // 2. Ignorer les protocoles non-HTTP
     if (!request.url.startsWith('http')) return;
 
-    // 3. Routes à ne jamais mettre en cache
+    const url = new URL(request.url);
     if (NEVER_CACHE.some(path => url.pathname.startsWith(path))) return;
 
-    // 4. Choix de stratégie selon le type de ressource
-    const ext = url.pathname.slice(url.pathname.lastIndexOf('.'));
+    const ext = getExtension(url.pathname);
 
-    if (STATIC_EXTENSIONS.includes(ext.toLowerCase())) {
-        // ── CACHE-FIRST pour les images et fonts ──────────────────────────
-        event.respondWith(cacheFirstStrategy(request, CACHE_STATIC, TTL.static));
-    } else if (url.hostname !== self.location.hostname) {
-        // ── Ressources CDN (fonts Google, Tailwind CDN) → Cache-First ────
-        event.respondWith(cacheFirstStrategy(request, CACHE_STATIC, TTL.static));
-    } else {
-        // ── NETWORK-FIRST pour les pages HTML et scripts Laravel ──────────
-        event.respondWith(networkFirstStrategy(request));
+    if (IMAGE_EXTENSIONS.includes(ext)) {
+        event.respondWith(cacheFirst(request, CACHE_IMAGES, TTL.images, MAX_ENTRIES.images));
+        return;
     }
+
+    if (STATIC_EXTENSIONS.includes(ext) || url.hostname !== self.location.hostname) {
+        event.respondWith(cacheFirst(request, CACHE_STATIC, TTL.static, MAX_ENTRIES.static));
+        return;
+    }
+
+    event.respondWith(networkFirst(request));
 });
 
-// ── STRATÉGIES ───────────────────────────────────────────────────────────────
+function getExtension(pathname) {
+    const index = pathname.lastIndexOf('.');
+    return index >= 0 ? pathname.slice(index).toLowerCase() : '';
+}
 
-/**
- * Cache-First : cherche en cache d'abord, réseau si absent.
- * Idéal pour les ressources qui ne changent pas souvent.
- */
-async function cacheFirstStrategy(request, cacheName, maxAge) {
-    const cache    = await caches.open(cacheName);
-    const cached   = await cache.match(request);
+async function cacheFirst(request, cacheName, maxAge, maxEntries) {
+    const cache = await caches.open(cacheName);
+    const cached = await cache.match(request);
 
     if (cached) {
-        // Vérifier si le cache est encore frais (via Date header ou timestamp)
-        const cachedDate = cached.headers.get('sw-cached-at');
-        if (cachedDate && (Date.now() - parseInt(cachedDate)) < maxAge * 1000) {
-            return cached;
-        }
-        // Expiré → retourner le cache périmé ET re-fetcher en arrière-plan
-        fetchAndCache(request, cacheName).catch(() => {});
+        const cachedAt = parseInt(cached.headers.get('sw-cached-at') || '0', 10);
+        if (cachedAt && Date.now() - cachedAt < maxAge * 1000) return cached;
+
+        fetchAndCache(request, cacheName, maxEntries).catch(() => {});
         return cached;
     }
 
-    // Pas en cache → réseau
-    return fetchAndCache(request, cacheName).catch(() => cached || Response.error());
+    return fetchAndCache(request, cacheName, maxEntries).catch(() => Response.error());
 }
 
-/**
- * Network-First : réseau d'abord, cache en fallback si offline.
- * Idéal pour les pages HTML avec données dynamiques.
- */
-async function networkFirstStrategy(request) {
+async function networkFirst(request) {
     const cache = await caches.open(CACHE_PAGES);
 
     try {
         const response = await fetch(request, { signal: AbortSignal.timeout(8000) });
 
         if (shouldCache(request, response)) {
-            // Stocker en cache (avec timestamp)
-            const toCache = response.clone();
-            const headers = new Headers(toCache.headers);
-            headers.append('sw-cached-at', Date.now().toString());
-            const body = await toCache.blob();
-            cache.put(request, new Response(body, {
-                status: toCache.status,
-                headers: headers,
-            })).catch(() => {});
+            await putWithTimestamp(cache, request, response, MAX_ENTRIES.pages);
         }
 
         return response;
     } catch {
-        // Offline → fallback sur le cache
         const cached = await cache.match(request);
         if (cached) return cached;
 
-        // Si c'est une page HTML, afficher la page offline
-        if (request.headers.get('accept')?.includes('text/html')) {
+        if ((request.headers.get('accept') || '').includes('text/html')) {
             return cache.match(OFFLINE_URL) || Response.error();
         }
 
@@ -160,24 +138,35 @@ async function networkFirstStrategy(request) {
     }
 }
 
-/**
- * Fetch et stocker en cache.
- */
-async function fetchAndCache(request, cacheName) {
+async function fetchAndCache(request, cacheName, maxEntries) {
     const response = await fetch(request);
-
     if (shouldCache(request, response, true)) {
-        const cache   = await caches.open(cacheName);
-        const headers = new Headers(response.headers);
-        headers.append('sw-cached-at', Date.now().toString());
-        const body = await response.clone().blob();
-        cache.put(request, new Response(body, {
-            status:  response.status,
-            headers: headers,
-        })).catch(() => {});
+        const cache = await caches.open(cacheName);
+        await putWithTimestamp(cache, request, response, maxEntries);
     }
 
     return response;
+}
+
+async function putWithTimestamp(cache, request, response, maxEntries) {
+    const headers = new Headers(response.headers);
+    headers.set('sw-cached-at', Date.now().toString());
+    const body = await response.clone().blob();
+
+    await cache.put(request, new Response(body, {
+        status: response.status,
+        statusText: response.statusText,
+        headers,
+    }));
+
+    await trimCache(cache, maxEntries);
+}
+
+async function trimCache(cache, maxEntries) {
+    const keys = await cache.keys();
+    if (keys.length <= maxEntries) return;
+
+    await Promise.all(keys.slice(0, keys.length - maxEntries).map(key => cache.delete(key)));
 }
 
 function shouldCache(request, response, allowCors = false) {
@@ -193,20 +182,19 @@ function shouldCache(request, response, allowCors = false) {
     return true;
 }
 
-// ── PUSH NOTIFICATIONS ────────────────────────────────────────────────────────
 self.addEventListener('push', event => {
     if (!event.data) return;
 
     const data = event.data.json();
     event.waitUntil(
         self.registration.showNotification(data.title || 'Campus Crush', {
-            body:    data.body || 'Nouvelle notification',
-            icon:    '/images/icons/icon-192x192.png',
-            badge:   '/images/icons/icon-72x72.png',
+            body: data.body || 'Nouvelle notification',
+            icon: '/images/icons/icon-192x192.png',
+            badge: '/images/icons/icon-72x72.png',
             vibrate: [100, 50, 100],
-            data:    { url: data.url || '/' },
+            data: { url: data.url || '/' },
             actions: [
-                { action: 'open',  title: 'Ouvrir' },
+                { action: 'open', title: 'Ouvrir' },
                 { action: 'close', title: 'Fermer' },
             ],
         })

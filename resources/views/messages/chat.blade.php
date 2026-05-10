@@ -175,7 +175,7 @@ $otherPhoto = $otherProfile?->photo_url ?? 'https://ui-avatars.com/api/?backgrou
 
             <div class="w-10 h-10 rounded-full p-[2px] flex-shrink-0" style="background: linear-gradient(135deg, #ff5e6c, #ffc145);">
                 <div class="w-full h-full rounded-full overflow-hidden">
-                    <img src="{{ $otherPhoto }}" class="w-full h-full object-cover" alt="{{ e($other->name) }}">
+                    <img src="{{ $otherPhoto }}" class="w-full h-full object-cover" alt="{{ e($other->name) }}" width="40" height="40" loading="eager" decoding="async">
                 </div>
             </div>
 
@@ -287,7 +287,7 @@ $otherPhoto = $otherProfile?->photo_url ?? 'https://ui-avatars.com/api/?backgrou
                 <div class="relative mb-5">
                     <div class="w-16 h-16 rounded-full overflow-hidden ring-2 ring-white/10"
                         style="box-shadow: 0 0 0 6px rgba(255,94,108,0.08);">
-                        <img src="{{ $otherPhoto }}" class="w-full h-full object-cover" alt="{{ e($other->name) }}">
+                        <img src="{{ $otherPhoto }}" class="w-full h-full object-cover" alt="{{ e($other->name) }}" width="64" height="64" loading="eager" decoding="async">
                     </div>
                     <span class="absolute -bottom-1 -right-1 text-xl">💬</span>
                 </div>
@@ -352,7 +352,7 @@ $otherPhoto = $otherProfile?->photo_url ?? 'https://ui-avatars.com/api/?backgrou
             @endphp
             <div class="flex items-end gap-2 max-w-[80%] msg-in {{ $isMe ? 'ml-auto flex-row-reverse' : '' }}" style="margin-top: {{ $sameSender ? '2px' : '10px' }};">
                 @if(!$isMe && !$sameSender)
-                <img src="{{ $msg->sender->profile?->photo_url ?? $otherPhoto }}" class="w-6 h-6 rounded-full object-cover flex-shrink-0" alt="">
+                <img src="{{ $msg->sender->profile?->photo_url ?? $otherPhoto }}" class="w-6 h-6 rounded-full object-cover flex-shrink-0" alt="" width="24" height="24" loading="lazy" decoding="async">
                 @elseif(!$isMe && $sameSender)
                 <div class="w-6 flex-shrink-0"></div>
                 @endif
@@ -365,7 +365,7 @@ $otherPhoto = $otherProfile?->photo_url ?? 'https://ui-avatars.com/api/?backgrou
                         <div class="flex flex-wrap gap-1.5 {{ $msg->message ? 'mt-2' : '' }}">
                             @foreach($msg->attachments as $file)
                             <a href="{{ $file->url }}" target="_blank" class="block">
-                                <img src="{{ $file->url }}" class="w-32 h-32 object-cover rounded-xl img-preview" alt="" loading="lazy">
+                                <img src="{{ $file->url }}" class="w-32 h-32 object-cover rounded-xl img-preview" alt="" width="128" height="128" loading="lazy" decoding="async">
                             </a>
                             @endforeach
                         </div>
@@ -380,7 +380,7 @@ $otherPhoto = $otherProfile?->photo_url ?? 'https://ui-avatars.com/api/?backgrou
             @endforeach
 
             <div id="typing-indicator" class="hidden flex items-end gap-2 max-w-[80%] mt-2">
-                <img src="{{ $otherPhoto }}" class="w-6 h-6 rounded-full object-cover flex-shrink-0" alt="">
+                <img src="{{ $otherPhoto }}" class="w-6 h-6 rounded-full object-cover flex-shrink-0" alt="" width="24" height="24" loading="lazy" decoding="async">
                 <div class="bubble-received px-4 py-3 flex items-center gap-1.5">
                     <span class="typing-dot w-1.5 h-1.5 bg-white/40 rounded-full"></span>
                     <span class="typing-dot w-1.5 h-1.5 bg-white/40 rounded-full"></span>
@@ -426,7 +426,7 @@ $otherPhoto = $otherProfile?->photo_url ?? 'https://ui-avatars.com/api/?backgrou
     {{-- PROFILE CARD MODAL --}}
     <div id="profile-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-6" style="background:rgba(12,10,26,0.92); backdrop-filter:blur(20px);" onclick="if(event.target===this) this.classList.add('hidden')">
         <div class="w-full max-w-[300px] rounded-[24px] overflow-hidden relative" style="aspect-ratio: 3/4.2; box-shadow: 0 20px 60px rgba(0,0,0,0.5);">
-            <img src="{{ $otherPhoto }}" class="absolute inset-0 w-full h-full object-cover" alt="">
+            <img src="{{ $otherPhoto }}" class="absolute inset-0 w-full h-full object-cover" alt="{{ e($other->name) }}" loading="eager" decoding="async">
             <div class="absolute inset-0" style="background: linear-gradient(0deg, rgba(12,10,26,0.9) 0%, rgba(12,10,26,0.3) 35%, transparent 70%);"></div>
             <div class="absolute bottom-0 left-0 right-0 p-5">
                 <div class="flex items-baseline gap-2 mb-1.5">
@@ -466,6 +466,8 @@ $otherPhoto = $otherProfile?->photo_url ?? 'https://ui-avatars.com/api/?backgrou
         <script src="https://js.pusher.com/8.2.0/pusher.min.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/laravel-echo/1.15.0/echo.iife.js"></script>
     <?php endif; ?>
+
+    @include('components.client-image-compressor')
 
     <script>
         const matchId = <?php echo json_encode($match->id); ?>;
@@ -547,7 +549,7 @@ $otherPhoto = $otherProfile?->photo_url ?? 'https://ui-avatars.com/api/?backgrou
 
             let avatarHtml = '';
             if (!isMe) {
-                avatarHtml = '<img src="' + otherPhoto + '" class="w-6 h-6 rounded-full object-cover flex-shrink-0" alt="">';
+                avatarHtml = '<img src="' + otherPhoto + '" class="w-6 h-6 rounded-full object-cover flex-shrink-0" alt="" width="24" height="24" loading="lazy" decoding="async">';
             }
 
             let contentHtml = '';
@@ -557,7 +559,7 @@ $otherPhoto = $otherProfile?->photo_url ?? 'https://ui-avatars.com/api/?backgrou
             if (msg.attachments && msg.attachments.length) {
                 contentHtml += '<div class="flex flex-wrap gap-1.5' + (msg.message ? ' mt-2' : '') + '">';
                 msg.attachments.forEach(a => {
-                    contentHtml += '<a href="' + a.url + '" target="_blank"><img src="' + a.url + '" class="w-32 h-32 object-cover rounded-xl img-preview" loading="lazy"></a>';
+                    contentHtml += '<a href="' + a.url + '" target="_blank"><img src="' + a.url + '" class="w-32 h-32 object-cover rounded-xl img-preview" width="128" height="128" loading="lazy" decoding="async"></a>';
                 });
                 contentHtml += '</div>';
             }
@@ -618,11 +620,11 @@ $otherPhoto = $otherProfile?->photo_url ?? 'https://ui-avatars.com/api/?backgrou
                 if (data.attachments && data.attachments.length) {
                     content += '<div class="flex flex-wrap gap-1.5' + (data.message ? ' mt-2' : '') + '">';
                     data.attachments.forEach(a => {
-                        content += '<img src="' + a.url + '" class="w-32 h-32 object-cover rounded-xl" loading="lazy">';
+                        content += '<img src="' + a.url + '" class="w-32 h-32 object-cover rounded-xl" width="128" height="128" loading="lazy" decoding="async">';
                     });
                     content += '</div>';
                 }
-                div.innerHTML = '<img src="' + (data.senderPhoto || otherPhoto) + '" class="w-6 h-6 rounded-full object-cover flex-shrink-0" alt="">' +
+                div.innerHTML = '<img src="' + (data.senderPhoto || otherPhoto) + '" class="w-6 h-6 rounded-full object-cover flex-shrink-0" alt="" width="24" height="24" loading="lazy" decoding="async">' +
                     '<div class="flex flex-col items-start"><div class="bubble-received px-3.5 py-2.5">' + content + '</div>' +
                     '<span class="text-[9px] text-white/15 mt-1 px-1" style="font-family:monospace">' + data.time + '</span></div>';
                 chatArea.insertBefore(div, typingEl);
@@ -677,12 +679,22 @@ $otherPhoto = $otherProfile?->photo_url ?? 'https://ui-avatars.com/api/?backgrou
         // ═══════════════════════════════════════
         // FORM SUBMIT
         // ═══════════════════════════════════════
-        document.getElementById('msg-form').addEventListener('submit', function(e) {
+        document.getElementById('msg-form').addEventListener('submit', async function(e) {
             e.preventDefault();
             const input = document.getElementById('msg-input');
             const text = input.value.trim();
             const attachInput = document.getElementById('attach-input');
             if (!text && attachInput.files.length === 0) return;
+
+            if (window.CampusCrushImageTools && attachInput.files.length) {
+                await window.CampusCrushImageTools.compressInputFiles(attachInput, {
+                    maxSide: 1280,
+                    quality: 0.72,
+                    maxFiles: 5,
+                    namePrefix: 'chat-photo',
+                });
+            }
+
             const now = new Date();
             const time = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0');
             let contentHtml = '';
@@ -691,7 +703,7 @@ $otherPhoto = $otherProfile?->photo_url ?? 'https://ui-avatars.com/api/?backgrou
             if (files.length > 0) {
                 let imgHtml = '<div class="flex flex-wrap gap-1.5' + (text ? ' mt-2' : '') + '">';
                 files.forEach(f => {
-                    imgHtml += '<img src="' + URL.createObjectURL(f) + '" class="w-32 h-32 object-cover rounded-xl" alt="">';
+                    imgHtml += '<img src="' + URL.createObjectURL(f) + '" class="w-32 h-32 object-cover rounded-xl" width="128" height="128" decoding="async" alt="">';
                 });
                 imgHtml += '</div>';
                 contentHtml += imgHtml;
@@ -750,8 +762,16 @@ $otherPhoto = $otherProfile?->photo_url ?? 'https://ui-avatars.com/api/?backgrou
             aInput = document.getElementById('attach-input'),
             aPrev = document.getElementById('attach-preview');
         aBtn.onclick = () => aInput.click();
-        aInput.onchange = () => {
+        aInput.onchange = async () => {
             aPrev.innerHTML = '';
+            if (window.CampusCrushImageTools && aInput.files.length) {
+                await window.CampusCrushImageTools.compressInputFiles(aInput, {
+                    maxSide: 1280,
+                    quality: 0.72,
+                    maxFiles: 5,
+                    namePrefix: 'chat-photo',
+                });
+            }
             const files = Array.from(aInput.files);
             if (!files.length) {
                 aPrev.classList.add('hidden');
@@ -763,7 +783,7 @@ $otherPhoto = $otherProfile?->photo_url ?? 'https://ui-avatars.com/api/?backgrou
                 wrap.className = 'relative flex-shrink-0';
                 const r = new FileReader();
                 r.onload = e => {
-                    wrap.innerHTML = '<img src="' + e.target.result + '" class="w-16 h-16 object-cover rounded-xl"><button type="button" class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-[10px] leading-none shadow-lg" onclick="this.parentElement.remove(); checkPreview();">×</button>';
+                    wrap.innerHTML = '<img src="' + e.target.result + '" class="w-16 h-16 object-cover rounded-xl" width="64" height="64" decoding="async"><button type="button" class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-[10px] leading-none shadow-lg" onclick="this.parentElement.remove(); checkPreview();">×</button>';
                     aPrev.appendChild(wrap);
                 };
                 r.readAsDataURL(f);

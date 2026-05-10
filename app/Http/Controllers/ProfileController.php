@@ -11,6 +11,7 @@ use App\Models\Profile;
 use App\Models\Like;
 use App\Models\Matche;
 use App\Models\University;
+use App\Services\ImageCompressor;
 use Illuminate\Validation\Rule;
 
 class ProfileController extends Controller
@@ -51,7 +52,7 @@ class ProfileController extends Controller
             'level'         => 'required|string|in:L1,L2,L3,M1,M2,D1,D2,D3',
             'bio'           => 'required|string|max:200',
             'promotion'     => 'nullable|string|max:10',
-            'photo'         => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'photo'         => 'nullable|image|mimes:jpg,jpeg,png,webp|max:10240',
             'interests'     => 'nullable|string|max:500',
             'university_id' => 'nullable|exists:universities,id',
         ]);
@@ -59,7 +60,7 @@ class ProfileController extends Controller
         $photoPath = null;
         if ($request->hasFile('photo')) {
             $disk      = config('filesystems.default') === 's3' ? 's3' : 'public';
-            $photoPath = $request->file('photo')->store('profiles', $disk);
+            $photoPath = app(ImageCompressor::class)->storeProfilePhoto($request->file('photo'), $disk);
         }
 
         $universityId   = $validated['university_id'] ?? null;
@@ -222,7 +223,7 @@ class ProfileController extends Controller
             'level'         => 'required|string|in:L1,L2,L3,M1,M2,D1,D2,D3',
             'bio'           => 'nullable|string|max:200',
             'promotion'     => 'nullable|string|max:10',
-            'photo'         => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'photo'         => 'nullable|image|mimes:jpg,jpeg,png,webp|max:10240',
             'university_id' => 'nullable|exists:universities,id',
             'interests'     => 'nullable|string|max:500',
         ]);
@@ -247,7 +248,7 @@ class ProfileController extends Controller
             $diskDel = config('filesystems.default') === 's3' ? 's3' : 'public';
             if ($profile->photo) Storage::disk($diskDel)->delete($profile->photo);
             $disk         = config('filesystems.default') === 's3' ? 's3' : 'public';
-            $data['photo'] = $request->file('photo')->store('profiles', $disk);
+            $data['photo'] = app(ImageCompressor::class)->storeProfilePhoto($request->file('photo'), $disk);
         }
 
         $profile->update($data);

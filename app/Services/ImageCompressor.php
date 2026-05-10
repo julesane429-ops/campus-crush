@@ -88,21 +88,43 @@ class ImageCompressor
     ): string {
         // Nom de fichier unique, toujours en .jpg après compression
         $filename = $folder . '/' . Str::uuid() . '.jpg';
+        $fallbackFilename = $folder . '/' . Str::uuid() . '.' . $this->safeOriginalExtension($file);
 
         // Fallback si GD absent
         if (!extension_loaded('gd')) {
-            return $file->storeAs('', $filename, $disk);
+            return $this->storeOriginal($file, $fallbackFilename, $disk);
         }
 
         try {
             $compressed = $this->compress($file->getPathname(), $maxW, $maxH, $quality);
-            Storage::disk($disk)->put($filename, $compressed);
+            $stored = Storage::disk($disk)->put($filename, $compressed);
+            if (!$stored) {
+                throw new \RuntimeException("Impossible d'enregistrer l'image sur le disque [$disk].");
+            }
             return $filename;
         } catch (\Throwable $e) {
             // En cas d'erreur GD inattendue, stocker le fichier original
             report($e);
-            return $file->storeAs('', $filename, $disk);
+            return $this->storeOriginal($file, $fallbackFilename, $disk);
         }
+    }
+
+    private function storeOriginal(UploadedFile $file, string $filename, string $disk): string
+    {
+        $path = $file->storeAs('', $filename, $disk);
+
+        if (!$path) {
+            throw new \RuntimeException("Impossible d'enregistrer l'image originale sur le disque [$disk].");
+        }
+
+        return $path;
+    }
+
+    private function safeOriginalExtension(UploadedFile $file): string
+    {
+        $extension = strtolower($file->guessExtension() ?: $file->getClientOriginalExtension() ?: 'jpg');
+
+        return in_array($extension, ['jpg', 'jpeg', 'png', 'webp'], true) ? $extension : 'jpg';
     }
 
     /**
