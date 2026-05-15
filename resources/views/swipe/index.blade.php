@@ -144,6 +144,44 @@
             transform: translate(-50%, -50%) scale(1);
         }
 
+        .card-inline-actions {
+            position: absolute;
+            right: 18px;
+            bottom: 148px;
+            z-index: 11;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card-inline-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            color: #fff;
+            box-shadow: 0 10px 28px rgba(0, 0, 0, 0.24);
+            transition: transform 0.18s cubic-bezier(0.22, 1, 0.36, 1), filter 0.18s ease;
+        }
+
+        .card-inline-btn:active {
+            transform: scale(0.9);
+        }
+
+        .card-inline-pass {
+            width: 48px;
+            height: 48px;
+            border-radius: 999px;
+            background: rgba(239, 68, 68, 0.92);
+        }
+
+        .card-inline-like {
+            width: 54px;
+            height: 54px;
+            border-radius: 999px;
+            background: rgba(34, 197, 94, 0.94);
+        }
+
         /* ═══ SURFACES ═══ */
         .cc-surface {
             background: rgba(255, 255, 255, 0.04);
@@ -864,6 +902,15 @@
             <div class="stamp stamp-like rounded-xl px-5 py-2 font-extrabold text-2xl tracking-widest" style="transform-origin:center; left:30%; top:40%;">LIKE</div>
             <div class="stamp stamp-nope rounded-xl px-5 py-2 font-extrabold text-2xl tracking-widest" style="transform-origin:center; left:55%; top:40%;">NOPE</div>
 
+            <div class="card-inline-actions" aria-label="Actions rapides">
+                <button type="button" class="card-inline-btn card-inline-pass" data-card-action="pass" aria-label="Passer">
+                    <span class="text-xl font-black">×</span>
+                </button>
+                <button type="button" class="card-inline-btn card-inline-like" data-card-action="like" aria-label="Liker">
+                    <span class="text-xl">❤</span>
+                </button>
+            </div>
+
             <div class="absolute bottom-0 left-0 right-0 p-5">
                 <div class="flex items-end justify-between mb-2">
                     <div>
@@ -893,6 +940,22 @@ ${profile.badge === 'queen'
                 ${tags ? '<div class="flex flex-wrap gap-1.5">' + tags + '</div>' : ''}
             </div>
         `;
+
+            card.querySelector('[data-card-action="pass"]')?.addEventListener('click', (event) => {
+                event.stopPropagation();
+                if (activeCard !== card) return;
+                const nopeStamp = card.querySelector('.stamp-nope');
+                if (nopeStamp) nopeStamp.classList.add('visible');
+                swipe('left');
+            });
+
+            card.querySelector('[data-card-action="like"]')?.addEventListener('click', (event) => {
+                event.stopPropagation();
+                if (activeCard !== card) return;
+                const likeStamp = card.querySelector('.stamp-like');
+                if (likeStamp) likeStamp.classList.add('visible');
+                swipe('right');
+            });
 
             return card;
         }
